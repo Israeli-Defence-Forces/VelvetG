@@ -175,6 +175,8 @@ def main():
     run([javac, "-encoding", "UTF-8", *target8, "-proc:none", "-cp", test_cp, "-d", CHECKS, ROOT / "VioletVerify.java", *test_sources])
     runtime_cp = os.pathsep.join((str(CHECKS), str(assist_runtime), str(target), str(mc_test), dep_cp))
     run([java, "-Xverify:all", "-cp", runtime_cp, "VioletVerify", target, base])
+    run([java, "-Xverify:all", "-cp", runtime_cp, "StartupClassChecks", target])
+    run([java, "-Xverify:all", "-cp", runtime_cp, "ScoutFrameChecks", target, base])
     run([java, "-Xverify:all", "-cp", runtime_cp, "EngineChecks"])
     run([java, "-Xverify:all", "-cp", runtime_cp, "ReliabilityChecks"])
     run([java, "-Xverify:all", "-cp", runtime_cp, "AwarenessChecks"])
@@ -188,7 +190,7 @@ def main():
         shutil.copy2(PACKAGE / name, OUT / name)
     shutil.copytree(preview_dir, OUT / "validation-previews", dirs_exist_ok=True)
     with (OUT / "VALIDATION.txt").open("a", encoding="utf-8") as f:
-        f.write("\nLOCAL BUILD PIPELINE: PASS\nVioletVerify, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.\n")
+        f.write("\nLOCAL BUILD PIPELINE: PASS\nVioletVerify, StartupClassChecks, ScoutFrameChecks, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.\n")
     lines = []
     for f in sorted(p for p in OUT.iterdir() if p.is_file() and p.name != "SHA256SUMS.txt"):
         lines.append(f"{sha(f, 'sha256')}  {f.name}")

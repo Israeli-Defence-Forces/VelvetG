@@ -1,10 +1,22 @@
-PASS: 60 changed/new Java 8 classes JVM-verified; 1966 inherited classes proven byte-identical; 2026 classes structurally parsed; 852 Violet method references resolved; 10 UI font resources present
+integration2-release-build.log
+PASS: 61 changed/new Java 8 classes JVM-verified; 1965 inherited classes proven byte-identical; 2026 classes structurally parsed; 852 Violet method references resolved; 10 UI font resources present
+PASS: 280 inherited Scout/module startup classes JVM-verified without game initialization
+PASS: 3 Scout repair checks; original behavior preserved, JSON catch frame repaired
 PASS: 149 scheduling, manual priority, 60 CPS per hand, variation, delay, ramp, lag and count checks
 PASS: 26 bounded CPS, rolling average, diagnostics and soup-confirmation checks
 PASS: 26 scoreboard, projectile physics, collision budgets, alert cooldown and sound checks
 PASS: 23 hit correlation, observed health changes, bounded bed records and lifecycle checks
 PASS: 156 native registration, persistence identity, input/filter/reset, real menu routing, screen controls/drawing, responsive layout and HUD checks (graphics recorded; game not started)
 PASS: 55 assist registration/settings, enchanted tools, slot ownership, inventory focus/text guards and native soup-use transaction checks (no live network/graphics)
-Built and offline-checked /workspace/velvet-integration/project/VelvetG-Violet-r8-Cleanup-JDK8-FIX6/source-patch/built/GlideClient-VelvetG-2.0.9.6-Violet-r8-Integration1.jar. Live Minecraft/graphics testing is still required.
-PASS: 56 freshly compiled patch entries byte-identical to delivered JAR; all added class versions 52 (Java 8)
-PASS: baseline size/hash and unchanged embedded client licence notices
+integration2-java8-release.log
+PASS: 61 changed/new Java 8 classes JVM-verified; 1965 inherited classes proven byte-identical; 2026 classes structurally parsed; 852 Violet method references resolved; 10 UI font resources present
+PASS: 280 inherited Scout/module startup classes JVM-verified without game initialization
+PASS: 3 Scout repair checks; original behavior preserved, JSON catch frame repaired
+PASS: 149 scheduling, manual priority, 60 CPS per hand, variation, delay, ramp, lag and count checks
+PASS: 26 bounded CPS, rolling average, diagnostics and soup-confirmation checks
+PASS: 26 scoreboard, projectile physics, collision budgets, alert cooldown and sound checks
+PASS: 23 hit correlation, observed health changes, bounded bed records and lifecycle checks
+PASS: 156 native registration, persistence identity, input/filter/reset, real menu routing, screen controls/drawing, responsive layout and HUD checks (graphics recorded; game not started)
+PASS: 55 assist registration/settings, enchanted tools, slot ownership, inventory focus/text guards and native soup-use transaction checks (no live network/graphics)
+PASS: original crash reproduced on Java 8; inherited faulty class matches historical baseline
+PASS: runtime source-patch entries equal corresponding delivered JAR entries; all added classes Java 8

@@ -1,19 +1,128 @@
+--- a/Install-VelvetG.bat
++++ b/Install-VelvetG.bat
+@@ -2,51 +2,67 @@
+ setlocal EnableExtensions
+ cd /d "%~dp0"
+ 
+-set "R8JAR=GlideClient-VelvetG-2.0.9.6-Violet-r8.jar"
++rem RELEASE.properties is the single source of truth for the payload filename.
++set "R8JAR="
+ set "BUILTDIR=%~dp0source-patch\built"
++if not exist "%~dp0RELEASE.properties" goto MissingRelease
++for /f "usebackq tokens=1,* delims==" %%A in ("%~dp0RELEASE.properties") do if "%%A"=="jar" set "R8JAR=%%B"
++if not defined R8JAR goto MissingRelease
+ 
+-rem SOURCE package convenience: build r8 automatically when the release JAR is absent.
+-if not exist "%~dp0%R8JAR%" (
+-    if not exist "%BUILTDIR%\%R8JAR%" (
+-        echo.
+-        echo VelvetG Violet r8 has not been built yet.
+-        echo Building it now. JDK 8 or newer and internet access are required.
+-        echo.
+-        call "%~dp0BUILD.bat"
+-        if errorlevel 1 (
+-            echo.
+-            echo Build failed, so installation was not attempted.
+-            echo Check the build output above. Nothing in .minecraft was changed by this installer.
+-            pause
+-            exit /b 1
+-        )
+-    )
++if exist "%~dp0%R8JAR%" goto Install
++if exist "%BUILTDIR%\%R8JAR%" goto InstallBuilt
++if not exist "%~dp0BUILD.bat" goto MissingPayload
+ 
+-    if not exist "%BUILTDIR%\%R8JAR%" (
+-        echo.
+-        echo Build completed but %R8JAR% was not produced.
+-        echo Expected: "%BUILTDIR%\%R8JAR%"
+-        pause
+-        exit /b 1
+-    )
++echo.
++echo VelvetG has not been built yet.
++echo Building it now. JDK 8 or newer and internet access are required.
++echo.
++call "%~dp0BUILD.bat"
++if errorlevel 1 goto BuildFailed
++if not exist "%BUILTDIR%\%R8JAR%" goto MissingPayload
+ 
+-    echo.
+-    echo Build passed. Starting the validated r8 release installer...
+-    call "%BUILTDIR%\Install-VelvetG.bat" %*
+-    exit /b %ERRORLEVEL%
+-)
++:InstallBuilt
++if not exist "%BUILTDIR%\Install-VelvetG.bat" goto MissingPayload
++echo.
++echo Starting the validated release installer...
++call "%BUILTDIR%\Install-VelvetG.bat" %*
++exit /b %ERRORLEVEL%
+ 
++:Install
+ set "VLOG=%TEMP%\VelvetG-install-%RANDOM%-%RANDOM%.log"
+ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-VelvetG.ps1" %* > "%VLOG%" 2>&1
+ set "install_result=%ERRORLEVEL%"
+ type "%VLOG%"
+-if not "%install_result%"=="0" (
+-  echo.
+-  echo Installation failed. Log: %VLOG%
+-  pause
+-  exit /b %install_result%
+-)
++if not "%install_result%"=="0" goto InstallFailed
+ del /q "%VLOG%" >nul 2>&1
+ echo.
+-echo VelvetG with Violet r8 is installed. Reopen the launcher and select VelvetG.
++echo VelvetG is installed. Reopen the launcher and select VelvetG.
+ pause
++exit /b 0
++
++:MissingRelease
++echo RELEASE.properties is missing or has no jar entry.
++echo Re-extract the complete installer or source ZIP into a new directory.
++pause
++exit /b 1
++
++:MissingPayload
++echo The configured release JAR is missing: %R8JAR%
++echo Expected beside this installer or in "%BUILTDIR%".
++echo For a prebuilt installation, extract the complete INSTALL ZIP.
++echo For a source build, restore the binary foundation and run BUILD.bat.
++pause
++exit /b 1
++
++:BuildFailed
++echo.
++echo Build failed, so installation was not attempted.
++echo Check the build output above. Nothing in .minecraft was changed by this installer.
++pause
++exit /b 1
++
++:InstallFailed
++echo.
++echo Installation failed. Log: %VLOG%
++pause
++exit /b %install_result%
 --- a/RELEASE.properties
 +++ b/RELEASE.properties
 @@ -1,5 +1,5 @@
 -release=VelvetG-2.0.9.6-Violet-r8
 -jar=GlideClient-VelvetG-2.0.9.6-Violet-r8.jar
-+release=VelvetG-2.0.9.6-Violet-r8-Integration1
-+jar=GlideClient-VelvetG-2.0.9.6-Violet-r8-Integration1.jar
++release=VelvetG-2.0.9.6-Violet-r8-Integration2
++jar=GlideClient-VelvetG-2.0.9.6-Violet-r8-Integration2.jar
  baselineJar=GlideClient-VelvetG-2.0.9.6-Violet-r7.jar
  profile=VelvetG
 -label=r8
-+label=r8-Integration1
++label=r8-Integration2
 --- a/source-patch/BUILD.ps1
 +++ b/source-patch/BUILD.ps1
-@@ -129,14 +129,17 @@
+@@ -128,15 +128,20 @@
+ $testSources=@(Get-ChildItem (Join-Path $root 'tests') -Filter '*.java'|ForEach-Object{$_.FullName})
  Compile -Arguments ((Java8Flags)+@('-proc:none','-cp',($target+';'+$mcTest+';'+$dependencyCp),'-d',$checks,(Join-Path $root 'VioletVerify.java'))+$testSources)
  Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'VioletVerify',$target,$BaseJar)
++Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'StartupClassChecks',$target)
++Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'ScoutFrameChecks',$target,$BaseJar)
  Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'EngineChecks')
 +Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'ReliabilityChecks')
 +Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'AwarenessChecks')
@@ -27,15 +136,18 @@
 +foreach($name in @('Install-VelvetG.bat','Install-VelvetG.ps1','Uninstall-VelvetG.ps1','README-FIRST.txt','RELEASE-NOTES.md','VALIDATION.txt','RELEASE.properties','AUDIT-FIX-MATRIX.md','CHANGELOG-INTEGRATION.md','INTEGRATION-NOTES.md','TESTING-REPORT.md','AUDIT-INTEGRATION.md','DEPENDENCY-NOTICES-INVENTORY.txt')){Copy-Item (Join-Path $packageRoot $name) $out -Force}
  if(Test-Path -LiteralPath $previewDir){Copy-Item -LiteralPath $previewDir -Destination (Join-Path $out 'validation-previews') -Recurse -Force}
 -Add-Content -LiteralPath (Join-Path $out 'VALIDATION.txt') -Value "`r`nLOCAL BUILD PIPELINE: PASS`r`nVioletVerify, EngineChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.`r`n" -Encoding UTF8
-+Add-Content -LiteralPath (Join-Path $out 'VALIDATION.txt') -Value "`r`nLOCAL BUILD PIPELINE: PASS`r`nVioletVerify, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.`r`n" -Encoding UTF8
++Add-Content -LiteralPath (Join-Path $out 'VALIDATION.txt') -Value "`r`nLOCAL BUILD PIPELINE: PASS`r`nVioletVerify, StartupClassChecks, ScoutFrameChecks, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.`r`n" -Encoding UTF8
  $hashLines=@()
  foreach($file in Get-ChildItem $out -File){$hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant();$hashLines+=("$hash  "+$file.Name)}
  [IO.File]::WriteAllLines((Join-Path $out 'SHA256SUMS.txt'),$hashLines,(New-Object System.Text.UTF8Encoding($false)))
 --- a/source-patch/BUILD.py
 +++ b/source-patch/BUILD.py
-@@ -176,16 +176,19 @@
+@@ -175,17 +175,22 @@
+     run([javac, "-encoding", "UTF-8", *target8, "-proc:none", "-cp", test_cp, "-d", CHECKS, ROOT / "VioletVerify.java", *test_sources])
      runtime_cp = os.pathsep.join((str(CHECKS), str(assist_runtime), str(target), str(mc_test), dep_cp))
      run([java, "-Xverify:all", "-cp", runtime_cp, "VioletVerify", target, base])
++    run([java, "-Xverify:all", "-cp", runtime_cp, "StartupClassChecks", target])
++    run([java, "-Xverify:all", "-cp", runtime_cp, "ScoutFrameChecks", target, base])
      run([java, "-Xverify:all", "-cp", runtime_cp, "EngineChecks"])
 +    run([java, "-Xverify:all", "-cp", runtime_cp, "ReliabilityChecks"])
 +    run([java, "-Xverify:all", "-cp", runtime_cp, "AwarenessChecks"])
@@ -51,7 +163,7 @@
      shutil.copytree(preview_dir, OUT / "validation-previews", dirs_exist_ok=True)
      with (OUT / "VALIDATION.txt").open("a", encoding="utf-8") as f:
 -        f.write("\nLOCAL BUILD PIPELINE: PASS\nVioletVerify, EngineChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.\n")
-+        f.write("\nLOCAL BUILD PIPELINE: PASS\nVioletVerify, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.\n")
++        f.write("\nLOCAL BUILD PIPELINE: PASS\nVioletVerify, StartupClassChecks, ScoutFrameChecks, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.\n")
      lines = []
      for f in sorted(p for p in OUT.iterdir() if p.is_file() and p.name != "SHA256SUMS.txt"):
          lines.append(f"{sha(f, 'sha256')}  {f.name}")
@@ -83,7 +195,18 @@
 +print("Dependency-independent checks passed. Full BUILD and live game validation are separate.")
 --- a/source-patch/VioletPatch.java
 +++ b/source-patch/VioletPatch.java
-@@ -57,6 +57,10 @@
+@@ -25,6 +25,10 @@
+   // r8 FIX3 deliberately leaves inherited base-client strings byte-for-byte intact.
+   // Rewriting legacy classes solely for branding can invalidate old StackMapTable frames.
+   // Product/version identity is handled by release metadata and installer UI instead.
++
++  // The historical Scout client has invalid Object frames at its JSON multi-catch.
++  // Recompute with the real class hierarchy; preserve its instructions and behavior.
++  mark(node(files.get(BASE+"scout/PikaApiClient.class")));
+ 
+   ClassNode manager=node(files.get(BASE+"management/mods/ModManager.class"));
+   MethodNode init=method(manager,"init");
+@@ -57,6 +61,10 @@
    if(tiles!=2)throw new IllegalStateException("Expected two module tile hooks, found "+tiles);
    System.out.println("Fitted description lanes: "+descriptions+"; Violet icon hooks: "+tiles);mark(category);
  
@@ -1306,6 +1429,69 @@
 +        check(filter.allows("minecraft:dirt",2,"obsidian"), "Blacklist permits other blocks");
 +        check(!filter.allows("minecraft:stone",1,"invalid block"), "Invalid whitelist fails closed");
 +        System.out.println("PASS: " + checks + " bounded CPS, rolling average, diagnostics and soup-confirmation checks");
++    }
++}
+--- /dev/null
++++ b/source-patch/tests/ScoutFrameChecks.java
+@@ -0,0 +1,34 @@
++import java.util.*;
++import java.util.zip.*;
++import java.io.*;
++import org.spongepowered.asm.lib.*;
++import org.spongepowered.asm.lib.tree.*;
++
++/** Ensure the historical Scout repair changes verification metadata, not behavior. */
++public final class ScoutFrameChecks {
++    private static byte[] read(ZipFile jar,String name) throws IOException {
++        try(InputStream in=jar.getInputStream(jar.getEntry(name));ByteArrayOutputStream out=new ByteArrayOutputStream()) {
++            byte[] buffer=new byte[8192];int n;while((n=in.read(buffer))!=-1)out.write(buffer,0,n);return out.toByteArray();
++        }
++    }
++    private static byte[] withoutFrames(byte[] bytes) {
++        ClassNode node=new ClassNode();new ClassReader(bytes).accept(node,ClassReader.SKIP_FRAMES);
++        for(MethodNode method:node.methods){method.maxStack=0;method.maxLocals=0;}
++        ClassWriter writer=new ClassWriter(0);node.accept(writer);return writer.toByteArray();
++    }
++    public static void main(String[] args) throws Exception {
++        String name="me/eldodebug/soar/scout/PikaApiClient.class";
++        try(ZipFile patched=new ZipFile(args[0]);ZipFile baseline=new ZipFile(args[1])) {
++            byte[] now=read(patched,name),before=read(baseline,name);
++            if(Arrays.equals(now,before))throw new AssertionError("Scout must be repaired, not kept unchanged");
++            if(!Arrays.equals(withoutFrames(now),withoutFrames(before)))throw new AssertionError("Scout instructions, members or debug metadata changed");
++            ClassNode node=new ClassNode();new ClassReader(now).accept(node,0);boolean repaired=false;
++            for(MethodNode method:node.methods)if(method.name.equals("json"))for(AbstractInsnNode i:method.instructions.toArray())if(i instanceof FrameNode) {
++                FrameNode frame=(FrameNode)i;
++                if(frame.stack!=null&&frame.stack.size()==1&&"java/lang/RuntimeException".equals(frame.stack.get(0)))repaired=true;
++            }
++            if(!repaired)throw new AssertionError("JSON exception handler lacks a RuntimeException frame");
++        }
++        System.out.println("PASS: 3 Scout repair checks; original behavior preserved, JSON catch frame repaired");
++    }
++}
+--- /dev/null
++++ b/source-patch/tests/StartupClassChecks.java
+@@ -0,0 +1,23 @@
++import java.util.*;
++import java.util.zip.*;
++
++/** JVM-verify inherited startup classes without initializing game, GL or networking. */
++public final class StartupClassChecks {
++    public static void main(String[] args) throws Exception {
++        int checked=0;
++        List<String> failures=new ArrayList<String>();
++        try(ZipFile z=new ZipFile(args[0])) {
++            for(ZipEntry e:Collections.list(z.entries())) {
++                String name=e.getName();
++                if(!name.endsWith(".class") || !(name.startsWith("me/eldodebug/soar/scout/") || name.startsWith("me/eldodebug/soar/management/mods/impl/")))continue;
++                String binary=name.substring(0,name.length()-6).replace('/','.');
++                try {
++                    Class<?> type=Class.forName(binary,false,StartupClassChecks.class.getClassLoader());
++                    type.getDeclaredMethods();type.getDeclaredConstructors();type.getDeclaredFields();checked++;
++                }catch(LinkageError ex){failures.add(binary+": "+ex);}
++            }
++        }
++        if(!failures.isEmpty())throw new AssertionError(String.join("\n",failures));
++        System.out.println("PASS: "+checked+" inherited Scout/module startup classes JVM-verified without game initialization");
 +    }
 +}
 --- a/source-patch/tests/TestPlayer.java

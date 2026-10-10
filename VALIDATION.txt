@@ -1,8 +1,8 @@
-VELVETG R8 INTEGRATION1 VALIDATION
+VELVETG R8 INTEGRATION2 VALIDATION
 
-See TESTING-REPORT.md for the executed build and checks.
-Historical source-package results are retained in ORIGINAL-VALIDATION.txt.
-The full Linux Python/Java build now runs successfully against the restored binary foundation and pinned Mojang dependencies.
-All seven verification/test stages must pass before the builder packages its output.
-Native test fixtures record graphics operations; they do not start the game or prove hardware rendering.
-Windows build/install, live Minecraft, Java 8 execution and Forge/OptiFine compatibility remain untested.
+The inherited Scout JSON exception-handler VerifyError is reproduced in Integration1 and repaired in Integration2.
+All nine verification/test stages pass on JDK 21 and Temurin Java 8 (1.8.0_504): 438 behavioral/repair assertions, 280 inherited Scout/module class verifications, plus structural checks.
+Source code/members of the repaired Scout class are preserved; only verification metadata/max-stack counts are recomputed.
+Native rendering is recorded by test fixtures; the game is not launched.
+Live Windows/OptiFine/Forge, hardware graphics and real installer execution remain untested.
+See TESTING-REPORT.md for commands and actual evidence.

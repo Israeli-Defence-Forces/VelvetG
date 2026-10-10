@@ -10,7 +10,7 @@ VioletEngine schedules independent hands and maintains CPS. VioletRuntime owns i
 
 ## Build and compatibility
 
-BUILD.sh/BUILD.bat invoke the existing Python/PowerShell/Java source-patch pipeline. It restores the exact baseline, checks downloaded artifact hashes, prefixes obfuscated Minecraft symbols for javac, compiles added code for Java 8, strips prefixes and patches four inherited integration classes (including the Target Info addition). Keep this pipeline and the launcher installer. The installer uses LaunchWrapper and GlideTweaker, not a Forge @Mod entry point. Standalone Forge loading is not supplied or proven. A Forge/OptiFine live compatibility test is outstanding.
+BUILD.sh/BUILD.bat invoke the existing Python/PowerShell/Java source-patch pipeline. It restores the exact baseline, checks downloaded artifact hashes, prefixes obfuscated Minecraft symbols for javac, compiles added code for Java 8, strips prefixes and patches five inherited classes (four integration hooks plus the Scout frame repair). Keep this pipeline and the launcher installer. The installer uses LaunchWrapper and GlideTweaker, not a Forge @Mod entry point. Standalone Forge loading is not supplied or proven. A Forge/OptiFine live compatibility test is outstanding.
 
 ## Licensing
 
@@ -247,3 +247,7 @@ Retain the Violet scheduler, physical-priority input bridge and native profile i
 - mixins.soar.json
 - mixins.soar.refmap.json
 - mixins.violet.json
+
+## Inherited Scout verification defect
+
+The crash report exposed an invalid multi-catch StackMapTable in the baseline PikaApiClient class. Byte preservation alone did not establish JVM validity. The pipeline now repairs only that class’s frames and JVM-loads all 280 inherited Scout/module implementation classes without initializing the game; the regression suite checks that Scout code/members remain unchanged. The original and repaired outputs were tested on an actual Java 8 runtime.

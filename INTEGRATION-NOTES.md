@@ -15,7 +15,7 @@ Restored baseline: 36,799,945 bytes; SHA-256 `737b416bf9256e7f22d28768bb6f54e681
 
 ## Installation
 
-Extract the INSTALL ZIP into a new directory. Close Minecraft and the launcher. Read `README-FIRST.txt`, then run `Install-VelvetG.bat` (or the included PowerShell installer). The existing installer verifies the release JAR hash, backs up launcher/version state and selects the VelvetG profile. It retains the existing profile name and uses the new Integration1 library version. It has not been executed against a real Windows Minecraft installation here.
+Extract the INSTALL ZIP into a new directory. Close Minecraft and the launcher. Read `README-FIRST.txt`, then run `Install-VelvetG.bat` (or the included PowerShell installer). The existing installer verifies the release JAR hash, backs up launcher/version state and selects the VelvetG profile. It retains the existing profile name and uses the new Integration2 library version. It has not been executed against a real Windows Minecraft installation here.
 
 For an isolated manual validation installation:
 
@@ -39,7 +39,7 @@ The supplied source-of-truth baseline has no Forge `@Mod` entry point or standal
 - Auto Soup refill works only with the player's own inventory screen open, an empty cursor and no item use. It replaces an empty/bowl hotbar slot; it does not silently discard bowls or rearrange a closed inventory.
 - Diagnostics are disabled by default, hold up to 128 events in memory and write only an explicit throttled report through the existing logger. No automatic log export/parser is supplied.
 - AutoBlock was evaluated separately; the reference includes packet queuing/delay behavior, which was excluded. No AutoBlock module was added.
-- Native OpenGL/NanoVG rendering, live client startup, Forge/OptiFine compatibility, multiplayer behavior, actual Java 8 execution, FPS/memory benchmarking and Windows install/reinstall/rollback/uninstall remain untested. Recorded rendering checks do not establish hardware rendering correctness. Existing third-party dependency licence notice locations were inventoried; full legal review of the historical binary is not claimed.
+- Native OpenGL/NanoVG rendering, live client startup, Forge/OptiFine compatibility, multiplayer behavior, the user’s exact Oracle 8u51 Windows runtime, FPS/memory benchmarking and Windows install/reinstall/rollback/uninstall remain untested. Recorded rendering checks do not establish hardware rendering correctness. Existing third-party dependency licence notice locations were inventoried; full legal review of the historical binary is not claimed.
 
 ## Live validation checklist
 
@@ -50,3 +50,7 @@ The supplied source-of-truth baseline has no Forge `@Mod` entry point or standal
 5. Observe beds/materials/destruction and visible/invisible/occluded players; confirm depth testing and GL state with other render modules.
 6. Test actual combat updates, crit uncertainty, combo resets, soup inventory acknowledgement and Auto Tool enchantment/durability/filter behavior.
 7. Measure frame/tick timings and allocations on target hardware. No FPS improvement figure is asserted.
+
+## Integration2 crash repair and update
+
+The inherited Scout JSON exception-handler frame was invalid. Integration2 repairs its verification metadata and preserves its instructions/API. The original error is reproduced on Java 8; the repaired JAR passes all nine test stages on Temurin 8u504 for Linux, including 280 inherited startup classes. A live Windows/OptiFine launch remains untested. Close the game and launcher, extract the new Integration2 installer into a separate directory, run Install-VelvetG.bat, then reopen the VelvetG profile. The installer updates the library version, retains its backup/rollback behavior and leaves saved module configuration in place. The previous tiny batch-file fix does not replace the crashing JAR.

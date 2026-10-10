@@ -26,6 +26,10 @@ public final class VioletPatch extends BytecodeIO {
   // Rewriting legacy classes solely for branding can invalidate old StackMapTable frames.
   // Product/version identity is handled by release metadata and installer UI instead.
 
+  // The historical Scout client has invalid Object frames at its JSON multi-catch.
+  // Recompute with the real class hierarchy; preserve its instructions and behavior.
+  mark(node(files.get(BASE+"scout/PikaApiClient.class")));
+
   ClassNode manager=node(files.get(BASE+"management/mods/ModManager.class"));
   MethodNode init=method(manager,"init");
   for(AbstractInsnNode i:init.instructions.toArray())if(i.getOpcode()==RETURN){InsnList hook=new InsnList();hook.add(new VarInsnNode(ALOAD,0));hook.add(call(RUNTIME,"install","(L"+manager.name+";)V"));init.instructions.insertBefore(i,hook);}

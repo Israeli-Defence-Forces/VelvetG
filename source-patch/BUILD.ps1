@@ -128,6 +128,8 @@ $runtimeCp=$checks+';'+$assistRuntime+';'+$target+';'+$mcTest+';'+$dependencyCp
 $testSources=@(Get-ChildItem (Join-Path $root 'tests') -Filter '*.java'|ForEach-Object{$_.FullName})
 Compile -Arguments ((Java8Flags)+@('-proc:none','-cp',($target+';'+$mcTest+';'+$dependencyCp),'-d',$checks,(Join-Path $root 'VioletVerify.java'))+$testSources)
 Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'VioletVerify',$target,$BaseJar)
+Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'StartupClassChecks',$target)
+Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'ScoutFrameChecks',$target,$BaseJar)
 Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'EngineChecks')
 Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'ReliabilityChecks')
 Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'AwarenessChecks')
@@ -139,7 +141,7 @@ Run-Java -Arguments @('-Xverify:all','-cp',$runtimeCp,'me.movi.violet.AssistChec
 
 foreach($name in @('Install-VelvetG.bat','Install-VelvetG.ps1','Uninstall-VelvetG.ps1','README-FIRST.txt','RELEASE-NOTES.md','VALIDATION.txt','RELEASE.properties','AUDIT-FIX-MATRIX.md','CHANGELOG-INTEGRATION.md','INTEGRATION-NOTES.md','TESTING-REPORT.md','AUDIT-INTEGRATION.md','DEPENDENCY-NOTICES-INVENTORY.txt')){Copy-Item (Join-Path $packageRoot $name) $out -Force}
 if(Test-Path -LiteralPath $previewDir){Copy-Item -LiteralPath $previewDir -Destination (Join-Path $out 'validation-previews') -Recurse -Force}
-Add-Content -LiteralPath (Join-Path $out 'VALIDATION.txt') -Value "`r`nLOCAL BUILD PIPELINE: PASS`r`nVioletVerify, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.`r`n" -Encoding UTF8
+Add-Content -LiteralPath (Join-Path $out 'VALIDATION.txt') -Value "`r`nLOCAL BUILD PIPELINE: PASS`r`nVioletVerify, StartupClassChecks, ScoutFrameChecks, EngineChecks, ReliabilityChecks, AwarenessChecks, VisualChecks, NativeChecks and AssistChecks passed while producing this built directory. A live Minecraft/OptiFine launch is still required.`r`n" -Encoding UTF8
 $hashLines=@()
 foreach($file in Get-ChildItem $out -File){$hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant();$hashLines+=("$hash  "+$file.Name)}
 [IO.File]::WriteAllLines((Join-Path $out 'SHA256SUMS.txt'),$hashLines,(New-Object System.Text.UTF8Encoding($false)))

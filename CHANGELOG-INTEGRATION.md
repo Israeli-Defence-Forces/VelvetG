@@ -1,4 +1,14 @@
-# r8 Integration1 changes
+# r8 Integration2 changes
+
+## Integration2 startup crash repair
+
+The user-provided crash report identifies a VerifyError in Scout's PikaApiClient.json: a multi-catch handler's StackMapTable incorrectly declares java/lang/Object where a Throwable-compatible type is required. The failing class was byte-identical to the restored historical r7 baseline. Integration2 recomputes that class's frames with the real dependency hierarchy; its methods, fields, instructions and behavior remain unchanged.
+
+A regression check reproduces the original error on Java 8 and now JVM-verifies all 280 inherited Scout/module implementation classes without initializing the game. Three focused checks confirm the repaired JSON RuntimeException frame and preservation of the original code. All nine verification/test stages pass on Temurin Java 8 (1.8.0_504) as well as the standard JDK 21 build. There are now 438 behavioral/repair assertions; 1,965 other inherited classes remain byte-identical. This does not establish a successful live Windows/OptiFine launch.
+
+The existing installer filename fix is retained. Integration2 has a distinct library/JAR version; the launcher profile name stays VelvetG. Re-run the new installer to update the launcher library reference. The earlier 5 KB installer fix does not repair this client crash.
+
+## Integration1 module changes retained
 
 This release extends the supplied r8 source patch against the exact r7 binary foundation. The original scheduler, launcher installer, native profiles, existing UI palette/fonts and Java 8 runtime target remain in place. No Fabric, Ornithe, OneConfig or new runtime library is included.
 

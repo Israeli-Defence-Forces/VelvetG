@@ -1,3 +1,4 @@
+modified  Install-VelvetG.bat
 modified  RELEASE.properties
 modified  source-patch/BUILD.ps1
 modified  source-patch/BUILD.py
@@ -28,6 +29,8 @@ added  source-patch/src/me/movi/violet/WorldLines.java
 added  source-patch/tests/AwarenessChecks.java
 modified  source-patch/tests/NativeChecks.java
 added  source-patch/tests/ReliabilityChecks.java
+added  source-patch/tests/ScoutFrameChecks.java
+added  source-patch/tests/StartupClassChecks.java
 modified  source-patch/tests/TestPlayer.java
 added  source-patch/tests/VisualChecks.java
 modified  source-patch/tests/me/movi/violet/AssistChecks.java
