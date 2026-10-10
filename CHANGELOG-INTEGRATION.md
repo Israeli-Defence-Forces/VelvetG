@@ -15,3 +15,7 @@ This release extends the supplied r8 source patch against the exact r7 binary fo
 Implementation uses the inherited event bus, module manager, settings, NanoVG and render accessors. VioletPatch now also hooks Target Info, in addition to its three original inherited integration classes. Combo Counter and Damage Particles are source replacements of existing modules, rather than duplicates. Five existing Violet mixins are retained. Bounded caches are reset on world/disable transitions; observations run on the Minecraft thread.
 
 Orven BW 0.7.3 was inspected as a conceptual reference. Its provided archive contains no project licence establishing permission to copy source, and targets an incompatible loader/Java runtime. New functionality was independently implemented. Original embedded licences/notices remain; downloaded dependency notice locations are inventoried separately.
+
+## Installer correction
+
+The Windows batch wrapper now reads the payload filename from RELEASE.properties instead of a hard-coded r8 name. A present prebuilt Integration1 JAR goes directly to the existing hash-verifying PowerShell installer. Source auto-build checks that BUILD.bat exists; missing payloads produce a clear error, and child-installer exit codes are propagated correctly. The compiled JAR is unchanged. See INSTALLER-FIX-NOTES.txt for the patch procedure and actual validation limits.

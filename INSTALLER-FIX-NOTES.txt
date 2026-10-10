@@ -1,0 +1,19 @@
+INSTALLER FIX (2026-10-10)
+
+The original Windows batch wrapper hard-coded the old Violet-r8.jar filename,
+so it tried to build even when the Integration1 JAR was present. The corrected
+wrapper reads jar= from RELEASE.properties, uses a prebuilt payload directly,
+and runs BUILD.bat only if the source build script actually exists.
+It also propagates child-installer exit codes after calls, outside parenthesized
+blocks, and reports missing metadata/payloads without invoking missing commands.
+The compiled client JAR is unchanged.
+
+To repair an already extracted Integration1 INSTALL directory, extract every
+file in VelvetG-r8-Integration1-INSTALLER-FIX.zip into the directory containing
+Install-VelvetG.bat and RELEASE.properties, allowing replacement. Then run
+Install-VelvetG.bat again. Do not run the fix ZIP from inside the archive viewer.
+
+Actual validation: the corrected installer archive was re-extracted; the jar=
+entry matches the included JAR, the included SHA-256 manifests match every listed
+file, and the JAR is byte-identical to the previously verified release.
+Windows cmd.exe/PowerShell execution remains untested in this Linux environment.

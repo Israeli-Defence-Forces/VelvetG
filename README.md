@@ -6,6 +6,7 @@ This delivery contains the updated editable source patch, a compiled client inte
 
 - [Installer ZIP, including the compiled JAR](https://github.com/Israeli-Defence-Forces/VelvetG/raw/refs/heads/delivery/r8-integration1/downloads/VelvetG-r8-Integration1-INSTALL.zip)
 - [Source ZIP](https://github.com/Israeli-Defence-Forces/VelvetG/raw/refs/heads/delivery/r8-integration1/downloads/VelvetG-r8-Integration1-SOURCE.zip)
+- [Small installer fix for already extracted packages](https://github.com/Israeli-Defence-Forces/VelvetG/raw/refs/heads/delivery/r8-integration1/downloads/VelvetG-r8-Integration1-INSTALLER-FIX.zip)
 - [SHA-256 checksums](downloads/SHA256SUMS.txt)
 
 Extract the installer ZIP into a new folder and read `INTEGRATION-NOTES.md` before running `Install-VelvetG.bat` on Windows. The JAR is inside that archive. The installer and live game behavior have not been tested on Windows here.
