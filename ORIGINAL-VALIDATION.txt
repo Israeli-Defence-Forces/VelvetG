@@ -1,0 +1,51 @@
+VELVETG + VIOLET R8 VALIDATION STATUS
+
+PASS (performed while preparing this source package):
+- VioletPatch / bytecode build-tool Java compiled successfully; the r8 builder supports JDK 8 or newer and emits Java 8-compatible classes.
+- ProfileManager replacement compiled against the r7 client API with Gson supplied.
+- Translator replacement compiled against the r7 client API with Gson supplied.
+- Public method signatures of both replacements were compared with the r7 classes
+  and match their externally visible API.
+- Full r8 Java source was passed through javac parsing. The reported errors were
+  missing Minecraft/LWJGL/vgstub compile-time types; no Java syntax errors were found.
+- VioletEngine + EngineChecks passed 149/149 scheduler/unit checks after the r8 refactor.
+- BUILD.py passed Python bytecode compilation; both BUILD.sh wrappers passed bash syntax checking.
+- r8 build-tool Java compiled against the restored r7 baseline after the ordinal-hook rewrite.
+- The source tree javac parse pass reported only unavailable Minecraft/LWJGL/vgstub types and zero syntax-like Java errors.
+- Dead root VelvetG.json was removed; RELEASE.properties is the r8 identity source.
+
+NOT RUN IN THE PREPARATION ENVIRONMENT:
+- Full BUILD.ps1 / BUILD.bat, because Mojang 1.8.9 binary dependencies were
+  unavailable from the isolated execution environment. The builder now reads the bundled
+  pinned `minecraft-1.8.9.json` and verifies all fetched artifacts.
+- The included scheduler/native/assist test suites against a freshly built r8 JAR.
+- Windows PowerShell installer execution.
+- Full Minecraft + OptiFine launch.
+- Native NanoVG rendering/hardware behavior.
+- Live multiplayer gameplay.
+
+REQUIRED BEFORE CALLING AN INSTALLABLE r8 BINARY RELEASE-READY:
+1. Run source-patch\BUILD.bat successfully on Windows with JDK 8 or newer.
+2. Confirm EngineChecks, NativeChecks, AssistChecks and VioletVerify all pass.
+3. Launch the produced profile with Java 8 and the target OptiFine configuration.
+4. Open every Violet/assist screen at multiple GUI scales and inspect the generated
+   previews plus real NanoVG output.
+5. Exercise profile save/reload, corrupt-profile recovery, install, reinstall,
+   rollback and uninstall on Windows PowerShell 5.1 and PowerShell 7 where available.
+
+SAFETY SCOPE:
+No anti-cheat evasion/detection-bypass work is part of r8. Automated gameplay features
+remain subject to server rules.
+
+
+FIX3 BUILD NOTE: verifier now JVM-verifies only changed/replacement classes and proves all other inherited baseline classes byte-identical. Cosmetic bytecode branding rewrites were removed to avoid invalidating legacy StackMapTable frames.
+
+FIX4 STATIC VALIDATION NOTE:
+- VioletRuntime physical-input arbitration changed to observed-transition-first with raw polling fallback.
+- Existing NativeChecks lines 32-39 already cover press-event/release-event precedence and context clearing; those checks are intentionally retained unchanged.
+- Full native validation still runs automatically on the user's build machine before installation.
+
+FIX6 FIELD-VALIDATION NOTE:
+- The preceding FIX5 Windows/JDK 8 build reached AssistChecks only after VioletVerify, 149 EngineChecks and 142 NativeChecks had passed.
+- FIX6 addresses the next exposed lifecycle regression in AssistRuntime.disabled(): manual-override grace/cooldown state is reset when the owning assist module is disabled.
+- Full AssistChecks and live-client validation still run on the build machine before installation.

@@ -1,0 +1,8 @@
+VELVETG R8 INTEGRATION1 VALIDATION
+
+See TESTING-REPORT.md for the executed build and checks.
+Historical source-package results are retained in ORIGINAL-VALIDATION.txt.
+The full Linux Python/Java build now runs successfully against the restored binary foundation and pinned Mojang dependencies.
+All seven verification/test stages must pass before the builder packages its output.
+Native test fixtures record graphics operations; they do not start the game or prove hardware rendering.
+Windows build/install, live Minecraft, Java 8 execution and Forge/OptiFine compatibility remain untested.

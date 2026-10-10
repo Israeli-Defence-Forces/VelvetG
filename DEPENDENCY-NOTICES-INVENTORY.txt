@@ -1,0 +1,35 @@
+io/netty/netty-all/4.0.23.Final/netty-all-4.0.23.Final.jar: No licence text inside artifact; retain upstream licence obligations.
+oshi-project/oshi-core/1.1/oshi-core-1.1.jar: No licence text inside artifact; retain upstream licence obligations.
+org/ow2/asm/asm-all/5.0.3/asm-all-5.0.3.jar: No licence text inside artifact; retain upstream licence obligations.
+org/apache/logging/log4j/log4j-core/2.0-beta9/log4j-core-2.0-beta9.jar: META-INF/LICENSE, META-INF/NOTICE
+org/apache/logging/log4j/log4j-api/2.0-beta9/log4j-api-2.0-beta9.jar: META-INF/LICENSE, META-INF/NOTICE
+org/apache/commons/commons-compress/1.8.1/commons-compress-1.8.1.jar: META-INF/LICENSE.txt, META-INF/NOTICE.txt
+org/apache/commons/commons-lang3/3.3.2/commons-lang3-3.3.2.jar: META-INF/LICENSE.txt, META-INF/NOTICE.txt
+org/apache/httpcomponents/httpcore/4.3.2/httpcore-4.3.2.jar: META-INF/NOTICE, META-INF/LICENSE
+org/apache/httpcomponents/httpclient/4.3.3/httpclient-4.3.3.jar: META-INF/LICENSE, META-INF/NOTICE
+org/lwjgl/lwjgl/lwjgl_util/2.9.2-nightly-20140822/lwjgl_util-2.9.2-nightly-20140822.jar: No licence text inside artifact; retain upstream licence obligations.
+org/lwjgl/lwjgl/lwjgl_util/2.9.4-nightly-20150209/lwjgl_util-2.9.4-nightly-20150209.jar: No licence text inside artifact; retain upstream licence obligations.
+org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209.jar: No licence text inside artifact; retain upstream licence obligations.
+org/lwjgl/lwjgl/lwjgl/2.9.2-nightly-20140822/lwjgl-2.9.2-nightly-20140822.jar: No licence text inside artifact; retain upstream licence obligations.
+org/lwjgl/lwjgl/lwjgl/2.9.4-nightly-20150209/lwjgl-2.9.4-nightly-20150209.jar: No licence text inside artifact; retain upstream licence obligations.
+commons-logging/commons-logging/1.1.3/commons-logging-1.1.3.jar: META-INF/NOTICE.txt, META-INF/LICENSE.txt
+tv/twitch/twitch/6.5/twitch-6.5.jar: No licence text inside artifact; retain upstream licence obligations.
+commons-io/commons-io/2.4/commons-io-2.4.jar: META-INF/LICENSE.txt, META-INF/NOTICE.txt
+com/ibm/icu/icu4j-core-mojang/51.2/icu4j-core-mojang-51.2.jar: license.html
+com/paulscode/codecjorbis/20101023/codecjorbis-20101023.jar: No licence text inside artifact; retain upstream licence obligations.
+com/paulscode/librarylwjglopenal/20100824/librarylwjglopenal-20100824.jar: No licence text inside artifact; retain upstream licence obligations.
+com/paulscode/codecwav/20101023/codecwav-20101023.jar: No licence text inside artifact; retain upstream licence obligations.
+com/paulscode/libraryjavasound/20101123/libraryjavasound-20101123.jar: No licence text inside artifact; retain upstream licence obligations.
+com/paulscode/soundsystem/20120107/soundsystem-20120107.jar: No licence text inside artifact; retain upstream licence obligations.
+com/google/guava/guava/17.0/guava-17.0.jar: No licence text inside artifact; retain upstream licence obligations.
+com/google/code/gson/gson/2.2.4/gson-2.2.4.jar: No licence text inside artifact; retain upstream licence obligations.
+com/mojang/realms/1.7.59/realms-1.7.59.jar: No licence text inside artifact; retain upstream licence obligations.
+com/mojang/netty/1.8.8/netty-1.8.8.jar: No licence text inside artifact; retain upstream licence obligations.
+com/mojang/authlib/1.5.21/authlib-1.5.21.jar: No licence text inside artifact; retain upstream licence obligations.
+commons-codec/commons-codec/1.9/commons-codec-1.9.jar: META-INF/LICENSE.txt, META-INF/NOTICE.txt
+net/sf/jopt-simple/jopt-simple/4.6/jopt-simple-4.6.jar: No licence text inside artifact; retain upstream licence obligations.
+net/minecraft/launchwrapper/1.12/launchwrapper-1.12.jar: No licence text inside artifact; retain upstream licence obligations.
+net/java/dev/jna/jna/3.4.0/jna-3.4.0.jar: No licence text inside artifact; retain upstream licence obligations.
+net/java/dev/jna/platform/3.4.0/platform-3.4.0.jar: No licence text inside artifact; retain upstream licence obligations.
+net/java/jutils/jutils/1.0.0/jutils-1.0.0.jar: No licence text inside artifact; retain upstream licence obligations.
+net/java/jinput/jinput/2.0.5/jinput-2.0.5.jar: No licence text inside artifact; retain upstream licence obligations.

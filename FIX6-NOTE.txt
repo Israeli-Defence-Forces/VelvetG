@@ -1,0 +1,12 @@
+FIX6 addresses the AssistChecks failure:
+  AssertionError: Explicit same-slot choice yields ownership
+
+Root cause:
+A short manual-override grace timer introduced by r8 correctly prevented immediate retake after a manual slot change, but the timer survived Auto Tool being disabled. Re-enabling Auto Tool immediately in the test therefore inherited stale ownership state.
+
+Fix:
+- Auto Tool disable clears toolYieldUntil after cleanup.
+- Auto Soup disable clears soupYieldUntil, nextSoup and soupAge after cleanup.
+- AssistChecks verifies the lifecycle reset before exercising explicit same-slot ownership.
+
+No anti-cheat or evasion behavior is added.

@@ -1,0 +1,3 @@
+import java.nio.file.*;import java.util.*;import java.util.zip.*;
+/** Standalone verification copy only; LaunchWrapper handles signing in game. */
+public class UnsignedJar {public static void main(String[] a)throws Exception {try(ZipFile in=new ZipFile(a[0]);ZipOutputStream out=new ZipOutputStream(Files.newOutputStream(Paths.get(a[1])))){for(ZipEntry e:Collections.list(in.entries())){String n=e.getName();if(e.isDirectory()||(n.startsWith("META-INF/")&&(n.endsWith(".SF")||n.endsWith(".RSA")||n.endsWith(".DSA"))))continue;out.putNextEntry(new ZipEntry(n));try(java.io.InputStream stream=in.getInputStream(e)){byte[] b=new byte[8192];int len;while((len=stream.read(b))>0)out.write(b,0,len);}out.closeEntry();}}}}

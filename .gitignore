@@ -1,0 +1,7 @@
+source-patch/work/
+source-patch/built/
+__pycache__/
+*.pyc
+logs/
+baseline-parts/
+/GlideClient-VelvetG-2.0.9.6-Violet-r7.jar

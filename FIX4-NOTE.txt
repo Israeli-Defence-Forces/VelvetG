@@ -1,0 +1,26 @@
+VelvetG Violet r8 Cleanup - FIX4
+
+Fixes the NativeChecks failure from FIX3:
+  "Mouse event starts hold with polling released"
+
+Root cause:
+The r8 KeyBinding transition hook correctly records physical press/release events, but
+VioletRuntime.physical() still preferred raw LWJGL polling whenever Mouse/Keyboard was
+created. A press event could therefore be immediately overwritten by a contradictory
+poll result. That also undermined the reason for moving input ownership to the
+KeyBinding transition hook in r8.
+
+FIX4 behavior:
+- observed real KeyBinding transitions are authoritative for the current session;
+- raw Mouse/Keyboard polling is used only before a transition for that key has been seen;
+- synthetic Violet key-state writes remain ignored by the transition recorder;
+- focus/menu/world changes still clear the observed state;
+- the existing NativeChecks regression tests now directly enforce both directions:
+  press-event beats stale released polling, and release-event beats stale pressed polling.
+
+Expected build progression after FIX4:
+- 3 baseline classes changed
+- 35 changed/new Java 8 classes JVM-verified
+- 1969 inherited classes byte-identical
+- 149 EngineChecks PASS
+- NativeChecks should continue beyond the former line-32 failure

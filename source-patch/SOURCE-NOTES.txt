@@ -1,0 +1,35 @@
+Violet and assist source
+
+src/me/movi/violet: independent Violet runtime, scheduler, native persisted
+settings, custom GUI/HUD, Auto Tool, Inventory Move and Auto Soup. All added classes target Java 8.
+VioletPatch.java and BytecodeIO.java: binary integration into the supplied base.
+Remap.java: temporarily prefixes obfuscated default-package Minecraft names for
+compilation, then strips the prefix. UnsignedJar.java: standalone verifier-only
+Minecraft copy; installed game artifacts are not modified by that helper.
+RestoreBase.java: restores four original classes, strips Violet additions, and
+verifies all 2,306 original entry hashes. Default BUILD recovers this input from
+the included JAR. -BaseJar requires the exact original attached PerfPatch hash.
+
+BUILD.bat supports JDK 8 or newer and downloads vanilla dependencies; native tests replace
+only graphics/hardware state and never run Minecraft or create an OpenGL window.
+The full original client source repository was not supplied. This is the full
+editable Violet implementation and its integration/build source, with original
+client class/resource bytes recovered from the included JAR.
+
+R4 adds a read-only KeyBinding pending-count accessor alongside the four
+existing input hooks. TestKeyBinding substitutes that getter in headless tests.
+OfflineMixinCheck transforms ave, avb, bda and bev; tests/offline/AccessorChecks
+checks the actual transformed avb getter with transformed classes first on the
+classpath. Both new hooks and all native module integrations target Java 8.
+
+R5 adds AssistModule/AssistRuntime, a held-slot synchronization invoker on bda,
+and a movement-input return hook on bev. AssistChecks compiles against prefixed
+classes and is remapped before execution; BUILD runs it after the native checks.
+Normal soup use pauses Violet generation without clearing toggle activation.
+
+R6 updates screen render scale and scale limits; HUD drawing and native edit
+bounds share the smaller dimensions. New draw previews use production methods.
+
+R7 adds AssistScreen and routes all three assist settings gears through it.
+Existing setting objects and persistence identities are reused. Screen layout
+and symmetric HUD typography are updated; gameplay logic is unchanged.

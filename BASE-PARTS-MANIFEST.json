@@ -1,0 +1,16 @@
+{
+  "baseline_sha256": "737b416bf9256e7f22d28768bb6f54e6819ad797301251065298e58827e5293e",
+  "baseline_size": 36799945,
+  "parts": [
+    {
+      "name": "velvetg-baseline.part1.bin",
+      "sha256": "194ba23f2b4c4eaa0a7f947fc92b44365290387f7bece4dfda62cec5ab873f87",
+      "size": 18874368
+    },
+    {
+      "name": "velvetg-baseline.part2.bin",
+      "sha256": "b16173ca4b1f451c68d04a109667cc583a114c1a30f441e922e7447a7b01ac34",
+      "size": 17925577
+    }
+  ]
+}

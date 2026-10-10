@@ -1,0 +1,18 @@
+VelvetG Violet r8 Cleanup - FIX3
+
+Fixes the JDK 8 VerifyError seen in PikaApiClient.json during VioletVerify.
+
+Cause:
+The previous verifier reflectively JVM-loaded every inherited Glide/VelvetG class under a plain class loader. Some legacy LaunchWrapper-era classes are not valid to verify in that isolated context before their normal runtime transformation. Earlier builds also rewrote inherited classes for cosmetic version/UA strings, which needlessly recomputed StackMapTable frames.
+
+FIX3:
+- no cosmetic bytecode rewrites of inherited base-client classes;
+- JVM/ASM verification is restricted to classes r8 actually changed or added;
+- every other inherited baseline class is compared byte-for-byte against the restored baseline;
+- BUILD.ps1 and BUILD.py pass the restored baseline into VioletVerify;
+- JDK 8 compatibility/version detection from FIX2 is retained.
+
+Expected build message after VioletPatch:
+  Violet built: 3 baseline classes changed, ... compiled/replacement classes added.
+
+If the build says 9 baseline classes changed, you are running an older FIX2 folder.
