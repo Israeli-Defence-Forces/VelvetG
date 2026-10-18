@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/liwwyy/ChuStatsu",
+  "tag": "v1.2.0",
+  "commit": "26a3d83c78d14322dd211254bdb33e7dae984d5a",
+  "codeLicense": "All-Rights-Reserved (fabric.mod.json)",
+  "fontLicense": "SIL OFL 1.1 (fonts/OFL.txt)",
+  "declaredSettingCount": 104,
+  "featureGroupCount": 45,
+  "testsExecuted": false,
+  "installedLeanInspected": false
+}
