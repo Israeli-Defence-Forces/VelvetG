@@ -16,7 +16,7 @@ The script reads the client and matching custom version JAR, exports sanitized l
 
 ## Actual checks
 
-[TESTING.md](TESTING.md): 36 assertions with actual PowerShell 7.4.13 on Linux, including path spaces, exact file preservation, 250 corrupt screenshot files, empty gallery, sanitized settings/logs/version data, split/restored hashes, malformed metadata, missing installation, embedded-key detection and tamper rejection. Windows PowerShell 5.1 execution remains untested. The script targets its syntax and .NET APIs.
+[TESTING.md](TESTING.md): 37 assertions with actual PowerShell 7.4.13 on Linux, including path spaces, exact file preservation, 250 corrupt screenshot files, empty gallery, sanitized settings/logs/version data, split/restored hashes, malformed metadata, missing installation, embedded-key detection and tamper rejection. Windows PowerShell 5.1 execution remains untested. The script targets its syntax and .NET APIs.
 
 These are collector tests. No current Lean client startup, native graphics, API authentication or FPS benchmark has run.
 

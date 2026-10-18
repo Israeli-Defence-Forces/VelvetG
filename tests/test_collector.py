@@ -23,14 +23,15 @@ with tempfile.TemporaryDirectory(prefix='collector tests ',dir=ROOT) as td:
  with zipfile.ZipFile(target,'w',zipfile.ZIP_STORED) as z:z.writestr('META-INF/MANIFEST.MF','Manifest-Version: 1.0\n');z.writestr('assets/synthetic.bin',b'Z'*(24*1024*1024+121))
  canaries=['pika_SyntheticPrivateKey123456789','SyntheticPersonalName_CANARY','192.0.2.99','71a4d4c0-1b1d-4e4f-a9a5-0e782bb6252b','SyntheticPrivateServer_CANARY']
  ver=game/'versions/LeanSyntheticPersonalName_CANARY';ver.mkdir(parents=True)
- (ver/(ver.name+'.json')).write_text(json.dumps({'id':ver.name,'inheritsFrom':'1.8.9','mainClass':'net.minecraft.launchwrapper.Launch','minecraftArguments':'--username '+canaries[1]+' --accessToken '+canaries[0]+' --server '+canaries[2]+' --tweakClass me.eldodebug.soar.injection.mixin.GlideTweaker','libraries':[{'name':'me.eldodebug:GlideClient:2.0.9.6-lean-fixed-20261016','url':'https://example.invalid/?key='+canaries[0]}],'arguments':{'jvm':['-Dsecret='+canaries[0]]}}))
+ (ver/(ver.name+'.json')).write_text(json.dumps({'id':ver.name,'jar':'1.8.9','inheritsFrom':'1.8.9','mainClass':'net.minecraft.launchwrapper.Launch','minecraftArguments':'--username '+canaries[1]+' --accessToken '+canaries[0]+' --server '+canaries[2]+' --tweakClass me.eldodebug.soar.injection.mixin.GlideTweaker','libraries':[{'name':'me.eldodebug:GlideClient:2.0.9.6-lean-fixed-20261016','url':'https://example.invalid/?key='+canaries[0]}],'arguments':{'jvm':['-Dsecret='+canaries[0]]}}))
+ with zipfile.ZipFile(ver/(ver.name+'.jar'),'w') as z:z.writestr('apikey.txt',canaries[0])
  parent=game/'versions/1.8.9';parent.mkdir(parents=True);(parent/'1.8.9.json').write_text(json.dumps({'id':'1.8.9','mainClass':'net.minecraft.client.main.Main','libraries':[]}))
  glide=game/'glide';glide.mkdir();screens=glide/'screenshots';screens.mkdir()
  for i in range(250):(screens/f'{canaries[1]} {i}.png').write_bytes(b'\x89PNG\r\n\x1a\ncorrupt-by-design')
  (glide/'settings.json').write_text(json.dumps({'scale':1.5,'enabled':True,'mode':'QUAD','period':'MONTHLY','apiKey':canaries[0],'account':{'scale':999,'username':canaries[1]},'notes':{'scale':777},'arbitrary':canaries[1]}))
  (glide/'apikey.txt').write_text(canaries[0]);(game/'launcher_accounts.json').write_text(json.dumps({'accessToken':canaries[0],'username':canaries[1]}));(game/'launcher_profiles.json').write_text(json.dumps({'lastUsed':canaries[1]}));(game/'servers.dat').write_bytes(canaries[4].encode())
  (game/'options.txt').write_text('maxFps:120\nrenderDistance:8\nenableVsync:false\nlastServer:'+canaries[4]+'\n')
- logs=game/'logs';logs.mkdir();(logs/'latest.log').write_text('[CHAT] '+canaries[0]+' '+canaries[1]+' '+canaries[2]+' '+canaries[3]+'\njava.lang.VerifyError: Bad type on operand stack '+canaries[0]+'\n at me.eldodebug.soar.scout.PikaApiClient.json(PikaApiClient.java:303)\nJava Version: 1.8.0_51, Oracle Corporation\nJVM Flags: 3 total; -Xmx3G -XX:+UseG1GC -Dprivate='+canaries[0]+'\n')
+ logs=game/'logs';logs.mkdir();(logs/'latest.log').write_text('[CHAT] '+canaries[0]+' '+canaries[1]+' '+canaries[2]+' '+canaries[3]+'\njava.lang.VerifyError: Bad type on operand stack '+canaries[0]+'\n at me.eldodebug.soar.scout.PikaApiClient.json(PikaApiClient.java:303)\n at pika_SyntheticPrivateKey123456789.Malicious(Log.java:1)\nJava Version: 1.8.0_51, Oracle Corporation\nJVM Flags: 3 total; -Xmx3G -XX:+UseG1GC -Dprivate='+canaries[0]+'\n')
  before=snapshot(game);result=run('-MinecraftDir',game,'-OutputParent',out)
  check(result.returncode==0,'collector succeeds with spaces: '+result.stdout+'\n'+result.stderr)
  check(snapshot(game)==before,'every original file, screenshot and configuration remains byte-identical')
@@ -49,6 +50,7 @@ with tempfile.TemporaryDirectory(prefix='collector tests ',dir=ROOT) as td:
   check(report['versions'][0]['mainClass']=='net.minecraft.launchwrapper.Launch','bootstrap retained without account arguments')
   check(report['versions'][0]['tweakClasses']==['me.eldodebug.soar.injection.mixin.GlideTweaker'],'safe tweak classes retained')
   check(len(report['versions'])==2,'matching version and parent discovered')
+ check(len(report['payloads'])==1,'unused credential-bearing version JAR ignored when manifest selects vanilla')
  payload=report['payloads'][0];binary=bytearray()
  for part in payload['parts']:
   with zipfile.ZipFile(dirs[0]/part['archive']) as z:

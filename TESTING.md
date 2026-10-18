@@ -2,7 +2,7 @@
 
 Executed `python3 tests/test_collector.py` against the shipped PowerShell script with verified official PowerShell 7.4.13 (Linux). Package SHA-256: 59e5df675dacbfe45374c32c1bf2480168a33243423c9b19252d0476fd1b748c, checked against the release hashes from PowerShell/PowerShell.
 
-Actual result: **36 assertions passed**. Fixtures are synthetic, not copied player data. They exercise:
+Actual result: **37 assertions passed**. Fixtures are synthetic, not copied player data. They exercise:
 
 - A valid synthetic JAR over 24 MiB, paths containing spaces, matching/parent launcher JSON discovery, configured tweak class extraction.
 - Byte-identical preservation of every original game/config/screenshot file.
@@ -17,3 +17,5 @@ The PowerShell script requires version 5.1 and avoids PowerShell 7-only language
 No executable third-party runtime, game file or ChuStatsu code/assets is shipped with the collector.
 
 To reproduce, install PowerShell and Python 3.8+ on a test machine, then run `python3 tests/test_collector.py`. The runner discovers `pwsh`/`powershell` on PATH; `POWERSHELL_EXECUTABLE` can select an existing runtime. The tests do not download or run Minecraft. The local verified runtime was PowerShell 7.4.13 Linux; running the runner elsewhere does not retroactively establish Windows validation.
+
+The final check also verifies that an unused credential-bearing version JAR is ignored when launcher metadata selects the vanilla JAR. A synthetic key placed in a forged stack-frame line is redacted from the exported diagnostics. Dependency and parent-JAR paths are restricted to safe coordinate/identifier components.

@@ -34,7 +34,7 @@ function Hash-File([string]$Path) { return (Get-FileHash -LiteralPath $Path -Alg
 function Add-TextEntry($Zip,[string]$Name,[string]$Value) {
     $entry = $Zip.CreateEntry($Name, [IO.Compression.CompressionLevel]::Optimal)
     $stream = $entry.Open()
-    try { $bytes = $script:utf8.GetBytes($Value); $stream.Write($bytes,0,$bytes.Length) } finally { $stream.Dispose() }
+    try { $bytes = $script:utf8.GetBytes([regex]::Replace($Value,'pika_[A-Za-z0-9_-]{16,128}','[REDACTED_API_KEY]')); $stream.Write($bytes,0,$bytes.Length) } finally { $stream.Dispose() }
 }
 function Zip-Open([string]$Path) {
     $stream = [IO.File]::Open($Path,[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
@@ -94,6 +94,8 @@ function Add-Payload([string]$Path,[string]$Id) {
 function Add-Library($Library) {
     $name = [string]$Library.name
     if ($name -notmatch '^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.+-]+(?::[A-Za-z0-9_.-]+)?$' -or $script:seenDependencies.ContainsKey($name)) { return }
+    $coordinateParts=$name.Split(':')
+    if ($coordinateParts[0] -notmatch '^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$' -or @($coordinateParts | Where-Object { $_ -eq '.' -or $_ -eq '..' }).Count -gt 0) { return }
     $script:seenDependencies[$name] = $true
     $item = [ordered]@{ coordinate=$name }
     $bits = $name.Split(':'); $relative = $bits[0].Replace('.','/')+'/'+$bits[1]+'/'+$bits[2]+'/'+$bits[1]+'-'+$bits[2]
@@ -117,17 +119,24 @@ function Add-Version([string]$Path,[string]$Role,[int]$Depth=0) {
     if ([string]$data.mainClass -match '^[A-Za-z_$][A-Za-z0-9_.$]+$') { $item.mainClass=[string]$data.mainClass }
     if ($data.javaVersion -and $data.javaVersion.majorVersion -is [ValueType]) { $item.javaMajor=$data.javaVersion.majorVersion }
     $item.tweakClasses=@([regex]::Matches([string]$data.minecraftArguments,'--tweakClass\s+([A-Za-z_$][A-Za-z0-9_.$]+)') | ForEach-Object { $_.Groups[1].Value })
-    $item.libraries=@($data.libraries | ForEach-Object { Add-Library $_; if ([string]$_.name -match '^[A-Za-z0-9_.:-]+$') { [string]$_.name } })
+    $item.libraries=@($data.libraries | ForEach-Object { Add-Library $_; if ($script:seenDependencies.ContainsKey([string]$_.name)) { [string]$_.name } })
     [void]$script:versions.Add($item)
     $parent = [string]$data.inheritsFrom
-    if ($parent -and $parent -match '^[A-Za-z0-9_.-]+$') {
+    if ($parent -and $parent -match '^[A-Za-z0-9_.-]+$' -and $parent -ne '.' -and $parent -ne '..') {
         Add-Version (Join-Path (Join-Path (Join-Path $root 'versions') $parent) ($parent+'.json')) 'parent' ($Depth+1)
     }
     $versionJar = [IO.Path]::ChangeExtension($Path,'.jar')
+    $collectVersionJar=$Role -eq 'matching'
+    if ($data.jar) {
+        $jarId=[string]$data.jar
+        if ($jarId -notmatch '^[A-Za-z0-9_.-]+$' -or $jarId -eq '.' -or $jarId -eq '..') { [void]$script:notes.Add('Unsafe launcher JAR reference omitted.'); return }
+        $versionJar=Join-Path (Join-Path (Join-Path $root 'versions') $jarId) ($jarId+'.jar')
+        if ($jarId -eq '1.8.9') { $collectVersionJar=$false }
+    }
     if (Test-Path -LiteralPath $versionJar -PathType Leaf) {
         $item.versionJarSize=(Get-Item -LiteralPath $versionJar).Length; $item.versionJarSha256=Hash-File $versionJar
         # Standard vanilla JARs are discoverable by hash; collect only custom version JARs.
-        if ($Role -eq 'matching' -and $item.versionJarSha256 -ne $script:clientHash) { Add-Payload $versionJar ($item.alias+'-jar') }
+        if ($collectVersionJar -and $item.versionJarSha256 -ne $script:clientHash) { Add-Payload $versionJar ($item.alias+'-jar') }
     }
 }
 function Read-Controls($Node,[int]$Depth=0) {

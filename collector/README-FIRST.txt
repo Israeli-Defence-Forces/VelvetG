@@ -25,6 +25,6 @@ What is excluded:
 
 No installed file is patched, reset, deleted or replaced. Every screenshot is preserved; images are not decoded. A damaged or absent screenshot folder does not stop collection. There is no network/upload code; you choose the archives to upload privately. Do not publish your collected client binary in a public repository. Existing dependency licences have not yet been established for this installed build.
 
-Verification performed here: 36 assertions using actual PowerShell 7.4.13 on Linux with synthetic game directories. These cover exact file preservation, paths with spaces, secret/personal-data canaries, split/restore hashes, corrupt settings, empty/250-corrupt-image galleries, missing installation, tampered parts and embedded-key rejection. Windows PowerShell 5.1 execution remains untested; the script targets its syntax and .NET ZIP APIs.
+Verification performed here: 37 assertions using actual PowerShell 7.4.13 on Linux with synthetic game directories. These cover exact file preservation, paths with spaces, secret/personal-data canaries, split/restore hashes, corrupt settings, empty/250-corrupt-image galleries, missing installation, tampered parts and embedded-key rejection. Windows PowerShell 5.1 execution remains untested; the script targets its syntax and .NET ZIP APIs.
 
 RESTORE-COLLECTION.py is for verifying/reassembling the uploaded collection on the analysis machine; you do not need Python to collect files on Windows. It never installs or runs the client.
