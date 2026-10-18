@@ -6,3 +6,8 @@ cache/
 config/
 data/
 tools/
+
+overhaul/work/
+overhaul/dist/
+!overhaul/tools/
+!overhaul/tools/**

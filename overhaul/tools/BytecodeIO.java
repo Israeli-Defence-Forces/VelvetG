@@ -1,0 +1,154 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.zip.*;
+import org.spongepowered.asm.lib.*;
+import org.spongepowered.asm.lib.tree.*;
+
+class BytecodeIO implements Opcodes {
+  static final String BASE = "me/eldodebug/soar/", P = BASE + "performance/";
+  static final Map<String, byte[]> files = new LinkedHashMap<>(), mc = new HashMap<>();
+  static final List<String> report = new ArrayList<>();
+
+  static ClassNode node(byte[] b) {
+    ClassNode n = new ClassNode();
+    new ClassReader(b).accept(n, 0);
+    return n;
+  }
+
+  static MethodNode method(ClassNode c, String n) {
+    for (MethodNode m : c.methods) if (m.name.equals(n)) return m;
+    throw new IllegalStateException(c.name + " missing " + n);
+  }
+
+  static void body(MethodNode m, InsnList body) {
+    m.instructions = body;
+    m.tryCatchBlocks.clear();
+    m.localVariables = null;
+    m.visibleLocalVariableAnnotations = null;
+    m.invisibleLocalVariableAnnotations = null;
+  }
+
+  static MethodInsnNode call(String owner, String name, String desc) {
+    return new MethodInsnNode(INVOKESTATIC, owner, name, desc, false);
+  }
+
+  static InsnList selfCall(String owner, String name) {
+    InsnList i = new InsnList();
+    i.add(new VarInsnNode(ALOAD, 0));
+    i.add(call(owner, name, "(Ljava/lang/Object;)V"));
+    i.add(new InsnNode(RETURN));
+    return i;
+  }
+
+  static void removeReflection(ClassNode c) {
+    c.fields.removeIf(f -> f.desc.startsWith("Ljava/lang/reflect/"));
+    c.methods.removeIf(
+        m ->
+            m.name.equals("velvet$findField")
+                || m.name.equals("velvet$findMethod")
+                || m.name.equals("velvet$isPlayerUsingItem"));
+  }
+
+  static void save(ClassNode c) {
+    ClassWriter w =
+        new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+          protected String getCommonSuperClass(String a, String b) {
+            try {
+              return common(a, b);
+            } catch (Exception e) {
+              throw new IllegalStateException("Hierarchy " + a + " <> " + b, e);
+            }
+          }
+        };
+    c.accept(w);
+    files.put(c.name + ".class", w.toByteArray());
+  }
+
+  static ClassNode info(String n) {
+    if (n.startsWith("java/") || n.startsWith("javax/")) {
+      try {
+        Class<?> c = Class.forName(n.replace('/', '.'), false, BytecodeIO.class.getClassLoader());
+        ClassNode cn = new ClassNode();
+        cn.name = n;
+        cn.access = c.getModifiers();
+        cn.superName =
+            c.getSuperclass() == null ? null : c.getSuperclass().getName().replace('.', '/');
+        for (Class<?> i : c.getInterfaces()) cn.interfaces.add(i.getName().replace('.', '/'));
+        return cn;
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+    byte[] b = files.get(n + ".class");
+    if (b == null) b = mc.get(n + ".class");
+    if (b == null)
+      try (InputStream in = BytecodeIO.class.getClassLoader().getResourceAsStream(n + ".class")) {
+        if (in != null) b = read(in);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    if (b == null) throw new IllegalStateException("Missing hierarchy class: " + n);
+    return node(b);
+  }
+
+  static boolean assign(String a, String b) {
+    if (a.equals(b) || a.equals("java/lang/Object")) return true;
+    if (b.startsWith("[")) {
+      if (a.equals("java/lang/Cloneable") || a.equals("java/io/Serializable")) return true;
+      if (!a.startsWith("[")) return false;
+      String aa = a.substring(1), bb = b.substring(1);
+      if (aa.equals(bb)) return true;
+      if (aa.startsWith("L") && bb.startsWith("L"))
+        return assign(aa.substring(1, aa.length() - 1), bb.substring(1, bb.length() - 1));
+      if (aa.startsWith("[") && bb.startsWith("[")) return assign(aa, bb);
+      return false;
+    }
+    if (a.startsWith("[")) return false;
+    ClassNode c = info(b);
+    if (c.superName != null && assign(a, c.superName)) return true;
+    for (String it : c.interfaces) if (assign(a, it)) return true;
+    return false;
+  }
+
+  static String common(String a, String b) {
+    if (assign(a, b)) return a;
+    if (assign(b, a)) return b;
+    if (a.startsWith("[") && b.startsWith("[")) {
+      String aa = a.substring(1), bb = b.substring(1);
+      if (aa.startsWith("L") && bb.startsWith("L"))
+        return "[L"
+            + common(aa.substring(1, aa.length() - 1), bb.substring(1, bb.length() - 1))
+            + ";";
+      return "java/lang/Object";
+    }
+    if (a.startsWith("[") || b.startsWith("[")) return "java/lang/Object";
+    ClassNode ca = info(a);
+    if ((ca.access & ACC_INTERFACE) != 0 || (info(b).access & ACC_INTERFACE) != 0)
+      return "java/lang/Object";
+    while (ca.superName != null) {
+      a = ca.superName;
+      if (assign(a, b)) return a;
+      ca = info(a);
+    }
+    return "java/lang/Object";
+  }
+
+  static byte[] read(InputStream in) throws IOException {
+    ByteArrayOutputStream o = new ByteArrayOutputStream();
+    byte[] b = new byte[8192];
+    int n;
+    while ((n = in.read(b)) > 0) o.write(b, 0, n);
+    return o.toByteArray();
+  }
+
+  static void load(String path, Map<String, byte[]> dest) throws Exception {
+    try (ZipFile z = new ZipFile(path)) {
+      Enumeration<? extends ZipEntry> e = z.entries();
+      while (e.hasMoreElements()) {
+        ZipEntry x = e.nextElement();
+        if (!x.isDirectory()) dest.put(x.getName(), read(z.getInputStream(x)));
+      }
+    }
+  }
+}

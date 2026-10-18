@@ -1,0 +1,17 @@
+PASS 52 modified/new Java 8 classes JVM and ASM verified; 1956 inherited classes byte-identical; 2008 classes parsed; 225 new call descriptors resolved; no baseline entries deleted; JSON repair instructions unchanged
+
+PASS: 285 inherited Scout/module startup classes JVM-verified without game initialization
+
+PASS: 315 inherited Scout/module startup classes JVM-verified without game initialization
+
+PASS 85 kernel, security, bounded cache, gallery and mock HTTP checks
+
+PASS 48 existing-scheduler mock integration checks
+
+PASS 18 cache invalidation, gallery startup/discovery, enrichment and cooldown checks (graphics mocked)
+
+PASS 3 coalesced-write, shutdown-flush and unknown-setting preservation checks; 1000 changes produced one atomic write
+
+PASS 5 Discord null-stop, uninitialized-close, connected-close, repeated-close and IOException checks (IPC mocked)
+
+PASS 3 real-profile-worker generation cancellation/visibility checks (session and HTTP mocked)

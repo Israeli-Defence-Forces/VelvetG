@@ -1,0 +1,5 @@
+Java 1.8.0_504
+Iterations 200000
+Disabled profiler start ns/call 14.08664
+40-row preparation ns/call 557.426135
+These are synthetic CPU microbenchmarks, not game render overhead or FPS. No baseline FPS comparison was run.
