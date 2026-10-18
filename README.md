@@ -4,7 +4,7 @@ The installed `2.0.9.6-lean-fixed-20261016` client is not accessible from this c
 
 ## Download and collect
 
-[Download the small Windows collector ZIP](https://github.com/Israeli-Defence-Forces/VelvetG/raw/refs/heads/tools/lean-collection/downloads/VelvetG-Lean-COLLECTOR.zip)
+[Download the small Windows collector ZIP](https://github.com/Israeli-Defence-Forces/VelvetG/raw/refs/heads/tools/lean-collection/downloads/VelvetG-Lean-COLLECTOR-v2.zip)
 
 1. Close Minecraft and its launcher. Extract the collector ZIP into a new folder outside `.minecraft`.
 2. Run `COLLECT-WINDOWS.bat`. The default game directory is `D:\Roaming\.minecraft`; the script targets the exact installed `lean-fixed-20261016` JAR. It does not silently substitute an older JAR.
@@ -16,7 +16,7 @@ The script reads the client and matching custom version JAR, exports sanitized l
 
 ## Actual checks
 
-[TESTING.md](TESTING.md): 37 assertions with actual PowerShell 7.4.13 on Linux, including path spaces, exact file preservation, 250 corrupt screenshot files, empty gallery, sanitized settings/logs/version data, split/restored hashes, malformed metadata, missing installation, embedded-key detection and tamper rejection. Windows PowerShell 5.1 execution remains untested. The script targets its syntax and .NET APIs.
+[TESTING.md](TESTING.md): 57 assertions with actual PowerShell 7.4.13 on Linux, including path spaces, exact file preservation, 250 corrupt screenshot files, empty gallery, sanitized settings/logs/version data, split/restored hashes, malformed metadata, missing installation, embedded-key detection and tamper rejection. Windows PowerShell 5.1 execution remains untested. The script targets its syntax and .NET APIs.
 
 These are collector tests. No current Lean client startup, native graphics, API authentication or FPS benchmark has run.
 
@@ -25,3 +25,7 @@ These are collector tests. No current Lean client startup, native graphics, API 
 [Feature matrix](CHUSTATSU-FEATURE-MATRIX.md): actual v1.2.0 tag `26a3d83c78d14322dd211254bdb33e7dae984d5a`, 45 feature groups and 104 configuration controls. Current-client comparisons remain explicitly blocked until collection arrives. Java code is ARR; independently implement useful behavior rather than copying it. Poppins has a separate OFL font licence. No reference code/assets or client binary is redistributed by this branch.
 
 The next stage audits the exact installed screenshot/API/classloader paths, creates reversible hash-targeted patches and preserves existing settings/features. Then performance instrumentation, bounded API/auth changes, native TAB/HUD/nametag integration and Windows verify/install/restore tools can be tested against the real baseline. No FPS improvement or completed feature-parity claim is made yet.
+
+## Collector revision 2
+
+Fixes startup path initialization: defaults are resolved after parameter binding, the no-argument Windows wrapper passes its own directory explicitly, and empty/invalid paths report which parameter needs attention. The output directory never falls back to System32 or the caller’s working directory. The 37 existing privacy/integrity checks and 20 new default-path checks pass on PowerShell 7.4.13 Linux. Windows cmd/PowerShell 5.1 execution remains untested.

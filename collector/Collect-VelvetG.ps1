@@ -3,17 +3,28 @@
 param(
     [string]$MinecraftDir = 'D:\Roaming\.minecraft',
     [string]$ClientJar = '',
-    [string]$OutputParent = $PSScriptRoot
+    [string]$OutputParent = ''
 )
 $ErrorActionPreference = 'Stop'
+# Resolve defaults after parameter binding; never pass an empty path to .NET.
+$collectorSourceFile=$MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($OutputParent)) {
+    if (-not [string]::IsNullOrWhiteSpace($collectorSourceFile)) { $OutputParent=[IO.Path]::GetDirectoryName($collectorSourceFile) }
+    elseif (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) { $OutputParent=$PSScriptRoot }
+}
+function Resolve-CollectorPath([string]$Value,[string]$Label) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { throw ($Label+' is empty. Supply a full filesystem path for -'+$Label+'.') }
+    try { return [IO.Path]::GetFullPath($Value) }
+    catch { throw ('Cannot resolve -'+$Label+'. Use a full filesystem path, without surrounding quote characters in the value.') }
+}
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$root = [IO.Path]::GetFullPath($MinecraftDir)
+$root = Resolve-CollectorPath $MinecraftDir 'MinecraftDir'
 if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Minecraft directory not found. Supply -MinecraftDir with the correct directory.' }
-if (-not $ClientJar) { $ClientJar = Join-Path $root 'libraries/me/eldodebug/GlideClient/2.0.9.6-lean-fixed-20261016/GlideClient-2.0.9.6-lean-fixed-20261016.jar' }
-$ClientJar = [IO.Path]::GetFullPath($ClientJar)
+if ([string]::IsNullOrWhiteSpace($ClientJar)) { $ClientJar = Join-Path $root 'libraries/me/eldodebug/GlideClient/2.0.9.6-lean-fixed-20261016/GlideClient-2.0.9.6-lean-fixed-20261016.jar' }
+$ClientJar = Resolve-CollectorPath $ClientJar 'ClientJar'
 if (-not (Test-Path -LiteralPath $ClientJar -PathType Leaf)) { throw 'The specified Lean client JAR was not found. Supply -ClientJar with the installed client JAR. No older client was substituted.' }
-$OutputParent=[IO.Path]::GetFullPath($OutputParent)
+$OutputParent=Resolve-CollectorPath $OutputParent 'OutputParent'
 $prefix=$root.TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
 if ($OutputParent.Equals($root,[StringComparison]::OrdinalIgnoreCase) -or $OutputParent.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)) { throw 'Choose an output directory outside the Minecraft installation.' }
 $out = Join-Path $OutputParent ('VelvetG-Collection-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,6))
@@ -218,7 +229,7 @@ try {
         $path=Join-Path $root $relative
         if(Test-Path -LiteralPath $path) { $backupCounts+=@{area=$relative;files=@(Get-ChildItem -LiteralPath $path -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 100).Count} }
     }
-    $report=[ordered]@{ schema=1; collector='VelvetG Lean read-only collection'; client=@{size=(Get-Item -LiteralPath $ClientJar).Length;sha256=$script:clientHash}; payloads=@($script:payloads.ToArray()); versions=@($script:versions.ToArray()); libraries=@($script:dependencies.ToArray()); configuration=@{filesSummarized=$configCount;controls=@($script:controls.ToArray());policy='Allowlisted numeric/boolean controls and fixed enums only; raw configuration and arbitrary strings omitted.'}; screenshotInventory=@{images=$screens.Count;bytes=$total;imagesCollected=$false}; java=@{executables=$java;reportedVersions=@($script:runtimeVersions.ToArray() | Select-Object -Unique);safeJvmFlags=@($script:jvmFlags.ToArray() | Select-Object -Unique)}; backupInventory=$backupCounts; notes=@($script:notes.ToArray()); exclusions=@('accounts','launcher_profiles.json','launcher_accounts.json','API key files','raw configurations','chat and raw logs','personal paths and names','screenshots and resource packs') }
+    $report=[ordered]@{ schema=1; collectorRevision=2; collector='VelvetG Lean read-only collection'; client=@{size=(Get-Item -LiteralPath $ClientJar).Length;sha256=$script:clientHash}; payloads=@($script:payloads.ToArray()); versions=@($script:versions.ToArray()); libraries=@($script:dependencies.ToArray()); configuration=@{filesSummarized=$configCount;controls=@($script:controls.ToArray());policy='Allowlisted numeric/boolean controls and fixed enums only; raw configuration and arbitrary strings omitted.'}; screenshotInventory=@{images=$screens.Count;bytes=$total;imagesCollected=$false}; java=@{executables=$java;reportedVersions=@($script:runtimeVersions.ToArray() | Select-Object -Unique);safeJvmFlags=@($script:jvmFlags.ToArray() | Select-Object -Unique)}; backupInventory=$backupCounts; notes=@($script:notes.ToArray()); exclusions=@('accounts','launcher_profiles.json','launcher_accounts.json','API key files','raw configurations','chat and raw logs','personal paths and names','screenshots and resource packs') }
     $zip=Zip-Open (Join-Path $out 'VelvetG-DIAGNOSTICS.zip')
     try { Add-TextEntry $zip 'collection.json' ($report | ConvertTo-Json -Depth 24); Add-TextEntry $zip 'stack-frames.txt' (($script:frames.ToArray() | Select-Object -Unique) -join "`r`n") } finally { $zip.Dispose() }
     $hashes=@(Get-ChildItem -LiteralPath $out -File -Filter '*.zip' | ForEach-Object { (Hash-File $_.FullName)+'  '+$_.Name })
