@@ -1,0 +1,7 @@
+test_discovery_and_execution (__main__.JavaDiscovery.test_discovery_and_execution) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 26.521s
+
+OK
+Java discovery: all 8 scenarios passed, including command shadowing and actual Java 8 execution.

@@ -25,13 +25,19 @@ class Installer(unittest.TestCase):
    config=root/'glide/config.json';config.write_text('{"SnapTap":true,"secret":"DO_NOT_EXPORT"}')
    launcher=root/'launcher_profiles.json';launcher.write_text('{"personal":"DO_NOT_CHANGE"}')
    hashes={p:sha(p) for p in [lib,original,screen,config,launcher]}
-   def invoke(action,ok=True,extra=()):
+   def invoke(action,ok=True,extra=(),java_mode="explicit"):
     env=dict(os.environ);env.update(XDG_CACHE_HOME=str(root/'cache'),XDG_CONFIG_HOME=str(root/'psconfig'),XDG_DATA_HOME=str(root/'psdata'))
-    r=subprocess.run([str(PS),'-NoProfile','-File',str(PACKAGE/'Manage-VelvetG.ps1'),'-Action',action,'-GameDir',str(root),'-JavaPath',str(JAVA),*extra],env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+    java_args=['-JavaPath',str(JAVA)] if java_mode=='explicit' else []
+    if java_mode!='explicit':
+     env['PATH']=str(JAVA.resolve().parent)+os.pathsep+env.get('PATH','')
+     env.pop('JAVA_HOME',None)
+     if java_mode=='home':env['JAVA_HOME']=str(JAVA.resolve().parent.parent)
+     elif java_mode=='stale-home':env['JAVA_HOME']=str(root/'missing Java home')
+    r=subprocess.run([str(PS),'-NoProfile','-File',str(PACKAGE/'Manage-VelvetG.ps1'),'-Action',action,'-GameDir',str(root),*java_args,*extra],env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     if ok:self.assertEqual(r.returncode,0,r.stdout)
     else:self.assertNotEqual(r.returncode,0,r.stdout)
     self.assertNotIn('DO_NOT_EXPORT',r.stdout);return r
-   invoke('Install');self.assertTrue((root/'velvetg-lean-overhaul/receipt.json').exists());invoke('Verify');invoke('Install',False)
+   invoke('Install',java_mode='path');self.assertTrue((root/'velvetg-lean-overhaul/receipt.json').exists());invoke('Verify',java_mode='home');invoke('Verify',java_mode='stale-home');invoke('Install',False)
    for p,h in hashes.items():self.assertEqual(sha(p),h)
    receipt=json.loads((root/'velvetg-lean-overhaul/receipt.json').read_text());patched=pathlib.Path(receipt['library']);self.assertTrue(patched.exists())
    installed=json.loads(pathlib.Path(receipt['versionJson']).read_text());entry=next(x for x in installed['libraries'] if x['name']==receipt['coordinate']);self.assertEqual(entry['checksums'],[hashlib.sha1(patched.read_bytes()).hexdigest()]);self.assertEqual(entry['size'],patched.stat().st_size);self.assertEqual(entry['path'],entry['downloads']['artifact']['path'])
@@ -39,7 +45,7 @@ class Installer(unittest.TestCase):
    original_bytes=patched.read_bytes();patched.write_bytes(original_bytes+b'corruption');invoke('Verify',False);invoke('Restore',False);self.assertTrue(patched.exists());patched.write_bytes(original_bytes)
    invoke('Restore');self.assertFalse(patched.exists());self.assertFalse((root/'velvetg-lean-overhaul/receipt.json').exists())
    for p,h in hashes.items():self.assertEqual(sha(p),h)
-   invoke('Install');invoke('Verify');invoke('Restore')
+   invoke('Install',java_mode='home');invoke('Verify');invoke('Restore',java_mode='path')
    # Target mismatch fails before backups or library creation.
    lib.write_bytes(b'wrong target');invoke('Install',False);self.assertFalse(patched.exists())
 if __name__=='__main__':unittest.main()

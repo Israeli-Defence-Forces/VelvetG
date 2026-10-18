@@ -2,6 +2,14 @@
 
 Target: exact collected 2.0.9.6-lean-fixed-20261016; Java 8 runtime.
 
+Installer FIX1:
+
+- Fixed the default installer failing with “The expression after & ... was not valid”: a helper named Java was shadowing discovery of the Java executable.
+- Renamed the helper; restricted PATH discovery to executable applications; validated explicit paths; retained JAVA_HOME priority with fallback for stale values and quoted paths.
+- Added eight executable-discovery regression scenarios and installation/verification/rollback coverage without an explicit Java path. Runtime client changes are identical to the initial Overhaul1 package.
+
+Client changes:
+
 - Removed screenshot startup discovery/deletion; preserved all physical screenshot files.
 - Moved gallery metadata scanning and image decode away from the render thread; added bounded previews, one-upload/frame admission, LRU/idle eviction, file-change checks and native image cleanup.
 - Preserved existing LWJGL compatibility and JSON verification repair; fixed evidenced Discord null-close and connected/repeated-close handling.

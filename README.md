@@ -1,6 +1,8 @@
 # VelvetG Lean native overhaul
 
-[Download the patch ZIP](downloads/VelvetG-Lean-Overhaul1-PATCH.zip) · [SHA-256](downloads/SHA256SUMS.txt)
+[Download the patch ZIP](downloads/VelvetG-Lean-Overhaul1-PATCH-FIX1.zip) · [SHA-256](downloads/SHA256SUMS.txt)
+
+**Installer FIX1** repairs Java executable discovery in PowerShell; extract the entire new ZIP into a fresh folder. The client patch itself is unchanged.
 
 A reversible Java 8 patch for the exact collected `2.0.9.6-lean-fixed-20261016` installation.
 

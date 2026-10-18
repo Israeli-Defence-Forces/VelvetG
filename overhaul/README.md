@@ -7,9 +7,11 @@ No full client, Minecraft JAR, account files, collected logs, original assets or
 ## Install on Windows
 
 1. Extract the entire ZIP into a folder. Close Minecraft and the launcher.
-2. Run `INSTALL-WINDOWS.bat`. Default game directory: `D:\Roaming\.minecraft`. A Java 8 or newer runtime on PATH is required; compilation and internet access are not required.
+2. Run `INSTALL-WINDOWS.bat`. Default game directory: `D:\Roaming\.minecraft`. A Java 8 or newer runtime discoverable through `JAVA_HOME` or PATH is required; compilation and internet access are not required.
 3. Run `VERIFY-INSTALLATION.bat`.
 4. In the launcher create a **new installation** selecting version **VelvetG-Lean-Overhaul1**, using the same game directory and a maintained **Java 8** runtime. The collector reported old launches using Java 8u51 while 8u504 is installed; select the maintained runtime explicitly. Do not launch this client with Java 21 merely because the installer runs on it.
+
+**Installer FIX1:** This package repairs the PowerShell Java-discovery error (“The expression after '&' ... was not valid”). Extract this entire corrected ZIP into a new folder and run its installer; mixing files from different packages fails checksum validation. The earlier invocation failure occurred before patch installation. If a receipt already exists, use Verify rather than reinstalling.
 
 Your original library, launcher version, launcher profile and existing configuration are retained. The installer makes verified private backups and installs a separate library/version. It does not edit `launcher_profiles.json`. If the launcher hides custom versions, enable their display. The installer intentionally does not modify your existing launcher installation.
 
@@ -66,4 +68,4 @@ This collects only process CPU/memory/thread counts, without command lines, acco
 
 ## Rebuild / test source
 
-Development requires JDK 17/21, Python 3.9+, your exact original client and Minecraft 1.8.9 JAR, and the installed launcher dependencies. Runtime additions and patch tools compile with `--release 8`. Set `JAVA_HOME`, `JAVA8` (a Java 8 executable), `BASELINE_JAR`, `MINECRAFT_JAR`, and `DEPENDENCIES_DIR`, then run `python build.py` and `python run-tests.py`. PowerShell installer tests additionally use `POWERSHELL_EXECUTABLE`; no binary baseline is supplied publicly. See the reports for the actual executed environment and results.
+Development requires JDK 17/21, Python 3.9+, your exact original client and Minecraft 1.8.9 JAR, and the installed launcher dependencies. Runtime additions and patch tools compile with `--release 8`. Set `JAVA_HOME`, `JAVA8` (a Java 8 executable), `BASELINE_JAR`, `MINECRAFT_JAR`, and `DEPENDENCIES_DIR`, then run `python build.py` and `python run-tests.py`. PowerShell installer tests additionally use `POWERSHELL_EXECUTABLE`; no binary baseline is supplied publicly. Run `python tests/test_java_discovery.py` and `python tests/test_installer.py` against the assembled distribution to check executable discovery and the installer transaction. See the reports for the actual executed environment and results.

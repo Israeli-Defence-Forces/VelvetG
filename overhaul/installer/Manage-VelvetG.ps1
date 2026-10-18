@@ -16,7 +16,29 @@ function ReadJson([string]$p){return ([IO.File]::ReadAllText($p)|ConvertFrom-Jso
 function SetProp($obj,[string]$name,$value){$obj|Add-Member -MemberType NoteProperty -Name $name -Value $value -Force}
 function WriteJson($obj,[string]$path){$text=$obj|ConvertTo-Json -Depth 100;[IO.File]::WriteAllText($path,$text,(New-Object Text.UTF8Encoding($false)))}
 function RemoveEmpty([string]$path){if((Test-Path -LiteralPath $path -PathType Container) -and [IO.Directory]::GetFileSystemEntries($path).Length -eq 0){[IO.Directory]::Delete($path,$false)}}
-function Java([string[]]$arguments){& $script:java @arguments;if($LASTEXITCODE -ne 0){throw 'Java patch/integrity check failed; installation was not approved.'}}
+function Resolve-VelvetJava([string]$requested){
+ if(-not [string]::IsNullOrWhiteSpace($requested)){
+  $candidate=[IO.Path]::GetFullPath($requested.Trim().Trim('"'))
+  if(-not (Test-Path -LiteralPath $candidate -PathType Leaf)){throw 'Java executable not found. Pass -JavaPath with the full path to java.exe.'}
+  return $candidate
+ }
+ if(-not [string]::IsNullOrWhiteSpace($env:JAVA_HOME)){
+  foreach($name in @('java.exe','java')){
+   # An obsolete or malformed JAVA_HOME must not prevent PATH discovery.
+   try{
+    $candidate=Join-Path ($env:JAVA_HOME.Trim().Trim('"')) ('bin/'+$name)
+    if(Test-Path -LiteralPath $candidate -PathType Leaf){return [IO.Path]::GetFullPath($candidate)}
+   }catch{continue}
+  }
+ }
+ foreach($name in @('java.exe','java')){
+  # A function or alias named Java is not an executable. PowerShell names ignore case.
+  $command=Get-Command -Name $name -CommandType Application -ErrorAction SilentlyContinue|Select-Object -First 1
+  if($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Path)){return $command.Path}
+ }
+ throw 'Java 8 or newer was not found. Install Java or pass -JavaPath with the full path to java.exe.'
+}
+function Invoke-VelvetJava([string[]]$arguments){& $script:javaExecutable @arguments;if($LASTEXITCODE -ne 0){throw 'Java patch/integrity check failed; installation was not approved.'}}
 $lock=$null;$stage=$null;$created=New-Object 'System.Collections.Generic.List[string]';$createdDirs=New-Object 'System.Collections.Generic.List[string]'
 try {
  if([string]::IsNullOrWhiteSpace($GameDir)){throw 'GameDir must be a non-empty directory path.'}
@@ -24,7 +46,7 @@ try {
  $state=Join-Path $root 'velvetg-lean-overhaul'
  $receiptPath=Join-Path $state 'receipt.json'
  if(-not (Test-Path -LiteralPath $root -PathType Container)){throw 'Minecraft directory does not exist. Pass -GameDir with the actual directory.'}
- if($JavaPath){$script:java=[IO.Path]::GetFullPath($JavaPath.Trim('"'))}elseif($env:JAVA_HOME -and (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin/java.exe'))){$script:java=Join-Path $env:JAVA_HOME 'bin/java.exe'}else{$script:java=(Get-Command java -ErrorAction Stop).Source}
+ $script:javaExecutable=Resolve-VelvetJava $JavaPath
  $manifest=ReadJson (Join-Path $package 'package.json')
  foreach($file in $manifest.files.PSObject.Properties){$p=Join-Path $package $file.Name;if((Hash $p) -ne $file.Value){throw ('Package checksum mismatch: '+$file.Name)}}
  if($Action -ne 'Install'){
@@ -32,7 +54,7 @@ try {
   $r=ReadJson $receiptPath
   if((Hash $r.original) -ne $expected -or (Hash $r.backup) -ne $expected){throw 'Original or backup hash mismatch. Refusing automatic changes.'}
   if((Hash $r.library) -ne $r.librarySha256 -or (Hash $r.versionJson) -ne $r.versionSha256){throw 'Installed patch or version metadata changed. Refusing automatic removal.'}
-  Java -arguments @('-cp',(Join-Path $package 'patcher.jar'),'VerifyPatch',$r.original,$r.library,(Join-Path $package 'entries.sha256'))
+  Invoke-VelvetJava -arguments @('-cp',(Join-Path $package 'patcher.jar'),'VerifyPatch',$r.original,$r.library,(Join-Path $package 'entries.sha256'))
   $v=ReadJson $r.versionJson;$lib=@($v.libraries|Where-Object {$_.name -eq $r.coordinate})
   if($lib.Count -ne 1 -or $lib[0].downloads.artifact.sha1 -ne (Get-FileHash -LiteralPath $r.library -Algorithm SHA1).Hash.ToLowerInvariant() -or $lib[0].downloads.artifact.size -ne (Get-Item -LiteralPath $r.library).Length){throw 'Launcher SHA-1/size metadata mismatch.'}
   if($Action -eq 'Restore'){
@@ -91,10 +113,10 @@ try {
  }
  $cpList=Join-Path $stage 'dependencies.txt';[IO.File]::WriteAllLines($cpList,@($dependencyPaths|Select-Object -Unique),(New-Object Text.UTF8Encoding($false)))
  $cpJar=Join-Path $stage 'classpath.jar'
- Java -arguments @('-cp',(Join-Path $package 'patcher.jar'),'ClassPathJar',$cpList,$cpJar)
+ Invoke-VelvetJava -arguments @('-cp',(Join-Path $package 'patcher.jar'),'ClassPathJar',$cpList,$cpJar)
  $cp=(Join-Path $package 'patcher.jar')+[IO.Path]::PathSeparator+$baseline+[IO.Path]::PathSeparator+$mc+[IO.Path]::PathSeparator+$cpJar
- Java -arguments @('-Xverify:all','-cp',$cp,'LeanPatch',$baseline,$mc,(Join-Path $package 'additions.jar'),$output)
- Java -arguments @('-cp',(Join-Path $package 'patcher.jar'),'VerifyPatch',$baseline,$output,(Join-Path $package 'entries.sha256'))
+ Invoke-VelvetJava -arguments @('-Xverify:all','-cp',$cp,'LeanPatch',$baseline,$mc,(Join-Path $package 'additions.jar'),$output)
+ Invoke-VelvetJava -arguments @('-cp',(Join-Path $package 'patcher.jar'),'VerifyPatch',$baseline,$output,(Join-Path $package 'entries.sha256'))
  $backupDir=Join-Path $state ('backup-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[Guid]::NewGuid().ToString('N').Substring(0,8));[IO.Directory]::CreateDirectory($backupDir)|Out-Null
  $backup=Join-Path $backupDir 'original-client.jar';[IO.File]::Copy($baseline,$backup,$false);[IO.File]::Copy($source.path,(Join-Path $backupDir 'original-version.json'),$false)
  if((Hash $backup) -ne $expected){throw 'Backup verification failed.'}
