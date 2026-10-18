@@ -1,6 +1,6 @@
 # Collector/restorer validation
 
-Executed `python3 tests/test_collector.py` against the shipped PowerShell script with verified official PowerShell 7.4.13 (Linux). Package SHA-256: 59e5df675dacbfe45374c32c1bf2480168a33243423c9b19252d0476fd1b748c, checked against the release hashes from microsoft/PowerShell.
+Executed `python3 tests/test_collector.py` against the shipped PowerShell script with verified official PowerShell 7.4.13 (Linux). Package SHA-256: 59e5df675dacbfe45374c32c1bf2480168a33243423c9b19252d0476fd1b748c, checked against the release hashes from PowerShell/PowerShell.
 
 Actual result: **36 assertions passed**. Fixtures are synthetic, not copied player data. They exercise:
 
@@ -15,3 +15,5 @@ Actual result: **36 assertions passed**. Fixtures are synthetic, not copied play
 The PowerShell script requires version 5.1 and avoids PowerShell 7-only language features; tests ran on 7.4.13 Linux, not Windows cmd.exe/PowerShell 5.1. Batch quoting and exit propagation were reviewed, not executed on Windows. Read permissions/NTFS locking may differ. No real installed Lean file, actual API secret, live server, native OpenGL startup, launcher modification or performance benchmark was exercised.
 
 No executable third-party runtime, game file or ChuStatsu code/assets is shipped with the collector.
+
+To reproduce, install PowerShell and Python 3.8+ on a test machine, then run `python3 tests/test_collector.py`. The runner discovers `pwsh`/`powershell` on PATH; `POWERSHELL_EXECUTABLE` can select an existing runtime. The tests do not download or run Minecraft. The local verified runtime was PowerShell 7.4.13 Linux; running the runner elsewhere does not retroactively establish Windows validation.

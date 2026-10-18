@@ -2,7 +2,7 @@
 from pathlib import Path
 import subprocess,os,tempfile,zipfile,json,hashlib,importlib.util,shutil
 ROOT=Path(__file__).resolve().parents[1]
-PS=ROOT/'tools/pwsh/pwsh'
+PS=Path(os.environ.get('POWERSHELL_EXECUTABLE') or shutil.which('pwsh') or shutil.which('powershell') or str(ROOT/'tools/pwsh/pwsh'))
 SCRIPT=ROOT/'collector/Collect-VelvetG.ps1'
 ENV=dict(os.environ,XDG_CACHE_HOME=str(ROOT/'cache'),XDG_CONFIG_HOME=str(ROOT/'config'),XDG_DATA_HOME=str(ROOT/'data'))
 checks=0
@@ -81,4 +81,4 @@ with tempfile.TemporaryDirectory(prefix='collector tests ',dir=ROOT) as td:
  with zipfile.ZipFile(target,'w') as z:z.writestr('assets/opaque.bin',b'X'*65530+canaries[0].encode()+b'Y')
  fourth=run('-MinecraftDir',game,'-OutputParent',out);check(fourth.returncode!=0,'embedded key crossing scan-buffer boundary blocks export')
  check(canaries[0] not in fourth.stdout+fourth.stderr,'detected key is not printed')
-print(f'PASS: {checks} collector privacy, integrity, splitting, spaces, missing/corrupt inputs and read-only checks (PowerShell 7.4.13 Linux; Windows 5.1 untested)')
+print(f'PASS: {checks} collector privacy, integrity, splitting, spaces, missing/corrupt inputs and read-only checks')

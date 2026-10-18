@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 VelvetG-Collection-*/
 *.jar
+cache/
+config/
+data/
+tools/
