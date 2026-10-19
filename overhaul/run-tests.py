@@ -24,4 +24,10 @@ stage2dir.mkdir()
 logs.append(run([JAVA8,'-Xverify:all','-cp',str(W/'tests')+os.pathsep+cp,'me.eldodebug.soar.lean.StageTwoChecks'],stage2dir));print(logs[-1]);migrationdir=W/'migration-test-run'
 if migrationdir.exists():shutil.rmtree(migrationdir)
 migrationdir.mkdir()
-logs.append(run([JAVA8,'-Xverify:all','-cp',str(W/'tests')+os.pathsep+cp,'me.eldodebug.soar.lean.SettingsMigrationChecks'],migrationdir));print(logs[-1]);bench=run([JAVA8,'-Xverify:all','-cp',str(W/'tests')+os.pathsep+cp,'me.eldodebug.soar.lean.OfflineBench']);print(bench);(R/'reports/offline-benchmark.txt').write_text(bench);(R/'reports/test-results.txt').write_text('\n'.join(logs))
+logs.append(run([JAVA8,'-Xverify:all','-cp',str(W/'tests')+os.pathsep+cp,'me.eldodebug.soar.lean.SettingsMigrationChecks'],migrationdir));print(logs[-1]);stage3dir=W/'stage3-test-run'
+if stage3dir.exists():shutil.rmtree(stage3dir)
+stage3dir.mkdir()
+logs.append(run([JAVA8,'-Xverify:all','-Djava.awt.headless=true','-cp',str(W/'tests')+os.pathsep+cp,'me.eldodebug.soar.lean.StageThreeChecks'],stage3dir));print(logs[-1]);v2dir=W/'v2-migration-test-run'
+if v2dir.exists():shutil.rmtree(v2dir)
+v2dir.mkdir()
+logs.append(run([JAVA8,'-Xverify:all','-cp',str(W/'tests')+os.pathsep+cp,'me.eldodebug.soar.lean.SettingsV2MigrationChecks'],v2dir));print(logs[-1]);bench=run([JAVA8,'-Xverify:all','-cp',str(W/'tests')+os.pathsep+cp,'me.eldodebug.soar.lean.OfflineBench']);print(bench);(R/'reports/offline-benchmark.txt').write_text(bench);(R/'reports/test-results.txt').write_text('\n'.join(logs))

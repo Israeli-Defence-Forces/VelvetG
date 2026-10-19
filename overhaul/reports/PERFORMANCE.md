@@ -11,9 +11,28 @@ No Minecraft launch, FPS increase, 1% low, GPU timing, real startup reduction or
 - Existing scheduler tests use a local HTTP server and real client scheduler/JSON parser, including deduplication, stale retention, cooldown and bounded queues. Mock network timings are not real Pika latency measurements.
 - `offline-benchmark.txt` contains the actual current Java 8 microbenchmark output: disabled-probe entry cost and synthetic 40-row preparation. These loops exclude GPU calls, font rasterization, API work, Minecraft and normal scene rendering. JIT, host scheduling and synthetic inputs materially limit their meaning. They cannot be used to estimate game FPS.
 
+## Final Overhaul3 CPU/allocation comparison
+
+The earlier 466/659 ns numbers came from a short synthetic harness with a volatile sink on each call. That result did not establish a game/frame-time regression or isolate layout, fonts, sorting, GL state or allocations. Code inspection did confirm an avoidable default roster copy and exceptions when parsing inherited numeric settings in rendering controls.
+
+`tests/benchmark_preparation.py` now compares the exact published Overhaul2 JAR with the final candidate, alternates run order across five independent JVM forks per variant/workload, warms each fork for 1.5 seconds, and retains seven 250 ms samples per fork. All JVMs use actual Java 8, identical dependencies and a fixed 128 MiB test heap (not a recommended Minecraft setting). `ThreadMXBean` allocation counters report bytes per operation. There were no concurrently running project test processes during this final run; host scheduling/load is uncontrolled.
+
+| Synthetic operation | Overhaul2 median of fork medians | Overhaul3 median of fork medians | Median allocated bytes, 2 → 3 |
+|---|---:|---:|---:|
+| Default preparation of an existing 40-row list, no explicit sort | 134.124 ns | 3.897 ns | 200 → 0 |
+| One inherited font-size plus one inherited entry-duration lookup | 4457.114 ns | 39.369 ns | 1264 → 0 |
+
+The first result measures the new no-copy fast path. It does not measure constructing/rendering a 40-player table. The second isolates sentinel parsing (EXISTING), which previously allocated NumberFormatExceptions. Explicit sorting, native font measurement/drawing, GPU work, networking, scene rendering and Minecraft initialization are excluded. Do not turn these ratios into an FPS or startup claim.
+
+All samples, hashes, fork medians, min/max and standard deviations are retained in `preparation-comparison.json`. Variance remains substantial: roster sample ranges were 71.327–270.844 ns (2) and 2.657–50.367 ns (3); settings ranges were 2466.244–22414.639 ns (2) and 31.963–578.247 ns (3). Every paired fork median favored the new paths, and the zero-allocation result is consistent with the removed copies/exception branches. There is no discarded outlier or cherry-picked best run.
+
+The local HTTP comparison also executes against final binaries: original/Overhaul2/Overhaul3 issue **3/1/1 profile requests** for one player across three selections. This preserves the earlier coalescing fix; see `profile-comparison-overhaul3.json`. It is not a live Pika latency/authentication measurement.
+
+Startup startGame/splash/Glide/module timelines are persisted after completed startup, and the profiler provides resettable local start/stop/export commands plus the last 4096 raw loop intervals. WINDOWS-SMOKE-TEST.md explains equivalent-scene Overhaul2/3 runs and fresh-export checks. The native head query/temporary arrays and hidden-TAB model guard are verified structurally/behaviorally, with no native GPU timing result claimed.
+
 ## Overhaul2 comparison executed here
 
-`build-comparison.json` contains the exact hashes and raw results from the same Java 8 harness. `tests/compare_builds.py` reproduces it using the private original, the previous installed/patched JAR (optional PREVIOUS_PATCH_JAR), and the rebuilt current JAR.
+`build-comparison.json` preserves the historical Overhaul2 run with its exact hashes and raw results. It is not regenerated from Overhaul3. The current comparison script labels the rebuilt candidate Overhaul3; use the release source/JAR matching a historical hash when reproducing that older experiment.
 
 | Workload | Original | Overhaul1 | Overhaul2 |
 |---|---:|---:|---:|

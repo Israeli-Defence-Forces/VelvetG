@@ -112,6 +112,7 @@ public final class StageTwoChecks {
     ok(LeanSettings.get("tabGameColumns").equals("NAME,HEALTH"), "preset retains layout");
     LeanSettings.preset("BALANCED");
     ok(!LeanSettings.on("maximumFPS"), "FPS mode reversible");
+    LeanSettings.preset("CUSTOM");
     LeanSettings.set("animation", "EXISTING");
     LeanSettings.set("tabShowAnimation", "NONE");
     LeanSettings.set("tabEntryAnimation", "EXISTING");

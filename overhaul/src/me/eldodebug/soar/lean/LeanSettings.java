@@ -7,7 +7,7 @@ import java.util.*;
 /** Additive settings. Existing Glide and VelvetG settings are never rewritten. */
 public final class LeanSettings {
   private static final Properties P = new Properties();
-  private static final File FILE = new File("config/velvetg-lean-v2.properties");
+  private static final File FILE = new File("config/velvetg-lean-v3.properties");
   private static final String[] BASE_KEYS = {
     "maximumFPS",
     "autoKey",
@@ -71,6 +71,7 @@ public final class LeanSettings {
 
   static {
     for (int i = 0; i < BASE_KEYS.length; i++) add(BASE_KEYS[i], BASE_DEFAULTS[i]);
+    add("presentationPreset", "CUSTOM");
     add("nametagWaiting", "true");
     add("nametagGame", "true");
     add("nametagElsewhere", "false");
@@ -109,6 +110,8 @@ public final class LeanSettings {
       add(panel + "ImageZoom", "100");
       add(panel + "ShowAnimation", "INHERIT");
       add(panel + "ShowMs", "INHERIT");
+      add(panel + "HideAnimation", "NONE");
+      add(panel + "HideMs", "180");
       add(panel + "EntryAnimation", "EXISTING");
       add(panel + "ResizeAnimation", "EXISTING");
       add(panel + "EntryMs", "EXISTING");
@@ -142,6 +145,8 @@ public final class LeanSettings {
               "ImageZoom",
               "ShowAnimation",
               "ShowMs",
+              "HideAnimation",
+              "HideMs",
               "EntryAnimation",
               "ResizeAnimation",
               "EntryMs",
@@ -162,7 +167,11 @@ public final class LeanSettings {
     KEYS = DEFAULT_LOOKUP.keySet().toArray(new String[0]);
     DEFAULTS = DEFAULT_LOOKUP.values().toArray(new String[0]);
     try {
-      File source = FILE.isFile() ? FILE : new File("config/velvetg-lean.properties");
+      File previous = new File("config/velvetg-lean-v2.properties");
+      File source =
+          FILE.isFile()
+              ? FILE
+              : previous.isFile() ? previous : new File("config/velvetg-lean.properties");
       if (source.isFile() && source.length() <= 65536)
         try (InputStream in = new FileInputStream(source)) {
           P.load(in);
@@ -179,9 +188,21 @@ public final class LeanSettings {
   }
 
   public static boolean on(String k) {
+    if (k.equals("headLayers") && on("maximumFPS")) return false;
+    if (k.equals("maximumFPS")) {
+      String preset = get("presentationPreset");
+      if (!preset.equals("CUSTOM")) return preset.equals("MAXIMUM_FPS");
+    }
     String v = get(k);
     return "true".equalsIgnoreCase(v)
         || (!"false".equalsIgnoreCase(v) && "true".equals(DEFAULT_LOOKUP.get(k)));
+  }
+
+  public static String animation() {
+    String preset = get("presentationPreset");
+    return preset.equals("BALANCED") || preset.equals("MAXIMUM_FPS")
+        ? "NONE"
+        : preset.equals("VISUAL") ? "SLIDE" : get("animation");
   }
 
   public static int number(String k, int low, int high) {
@@ -272,6 +293,10 @@ public final class LeanSettings {
             || k.endsWith("ShowAnimation")
             || k.endsWith("ShowMs"))) return;
     String base = k.replace("Waiting", "").replace("Game", "");
+    if (base.equals("presentationPreset")) {
+      if (!v.matches("CUSTOM|MAXIMUM_FPS|BALANCED|VISUAL")) throw new IOException("Invalid preset");
+      return;
+    }
     if (v.equals("EXISTING") && ("EXISTING".equals(DEFAULT_LOOKUP.get(base)))) return;
     if (base.endsWith("Columns")) {
       if (!v.equals("EXISTING") && !v.toUpperCase(Locale.ROOT).matches("[A-Z_]+(?:,[A-Z_]+)*"))
@@ -300,6 +325,11 @@ public final class LeanSettings {
     }
     if (base.endsWith("ExitAnimation")) {
       if (!v.matches("NONE|FADE|SLIDE")) throw new IOException("Invalid exit motion");
+      return;
+    }
+    if (base.endsWith("HideAnimation")) {
+      if (!v.matches("NONE|FADE|SLIDE|ZOOM|BOUNCE|POP"))
+        throw new IOException("Invalid hide animation");
       return;
     }
     if (base.equals("animation") || base.endsWith("ShowAnimation")) {
@@ -384,18 +414,8 @@ public final class LeanSettings {
   }
 
   public static void preset(String name) throws IOException {
-    Map<String, String> changes = new LinkedHashMap<>();
-    if (name.equals("MAXIMUM_FPS")) {
-      changes.put("maximumFPS", "true");
-    } else if (name.equals("BALANCED")) {
-      changes.put("maximumFPS", "false");
-      changes.put("animation", "NONE");
-    } else if (name.equals("VISUAL")) {
-      changes.put("maximumFPS", "false");
-      changes.put("animation", "SLIDE");
-      changes.put("animationMs", "180");
-    } else throw new IOException("Unknown preset");
-    setAll(changes);
+    // A reversible presentation layer; no custom appearance values are overwritten.
+    set("presentationPreset", name);
   }
 
   private static void save(File f) throws IOException {

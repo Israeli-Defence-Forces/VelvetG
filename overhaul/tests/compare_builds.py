@@ -12,8 +12,8 @@ mc=pathlib.Path(os.environ['MINECRAFT_JAR']).resolve()
 deps=[str(p.resolve()) for p in pathlib.Path(os.environ['DEPENDENCIES_DIR']).rglob('*.jar')]
 variants={'original':base}
 previous=os.environ.get('PREVIOUS_PATCH_JAR')
-if previous:variants['overhaul1']=pathlib.Path(previous).resolve()
-variants['overhaul2']=(W/'patched.jar').resolve()
+if previous:variants['previous']=pathlib.Path(previous).resolve()
+variants['overhaul3']=(W/'patched.jar').resolve()
 cp=os.pathsep.join([str(W/'patched.jar'),str(mc),*deps])
 (W/'comparison-tests').mkdir(parents=True,exist_ok=True)
 subprocess.run([str(jdk/'javac'),'--release','8','-proc:none','-cp',cp,'-d',str(W/'comparison-tests'),str(R/'tests/ComparisonBench.java'),str(R/'tests/ProfileCountBench.java')],check=True)
@@ -35,4 +35,4 @@ with tempfile.TemporaryDirectory(prefix='VelvetG comparison ') as temp:
    measured['medianSynthetic40RowNsPerCall']=statistics.median(series)
   result['variants'][name]=measured
 print(json.dumps(result,indent=2))
-(R/'reports/build-comparison.json').write_text(json.dumps(result,indent=2)+'\n')
+(R/'reports/profile-comparison-overhaul3.json').write_text(json.dumps(result,indent=2)+'\n')

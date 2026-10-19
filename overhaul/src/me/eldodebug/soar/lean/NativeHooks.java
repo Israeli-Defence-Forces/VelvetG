@@ -23,7 +23,7 @@ public final class NativeHooks {
           new ThreadPoolExecutor.AbortPolicy());
   private static volatile String host = "";
   private static Object connection;
-  private static volatile Map<String, String> nametags = Collections.emptyMap();
+  private static volatile Map<String, NameLabel> nametags = Collections.emptyMap();
   private static long snapshot;
   private static String lastHost = "";
   private static volatile boolean onPika;
@@ -57,6 +57,7 @@ public final class NativeHooks {
       onPika = KeyVault.pika(h);
       ProfileExtras.clear();
       RowLifecycle.clear();
+      TableEffects.clear();
       nametags = Collections.emptyMap();
       if (c != null) {
         try {
@@ -79,16 +80,19 @@ public final class NativeHooks {
       snapshot = System.nanoTime();
       ScoutMod mod = ScoutMod.getInstance();
       if (mod != null && mod.isToggled() && tagPhase(ScoutState.currentPhase())) {
-        Map<String, String> m = new HashMap<>();
+        Map<String, NameLabel> m = new HashMap<>();
         String stat = LeanSettings.get("nametagStat");
         if (Arrays.asList("FKDR", "WLR", "HWS", "LV", "FK", "WINS", "BEDS").contains(stat))
           for (ScoutRow r : mod.currentRows())
             if (r.stats != null
                 && r.stats.status == ScoutStats.Status.OK
-                && (!r.spectator || LeanSettings.on("nametagSpectators")))
+                && (!r.spectator || LeanSettings.on("nametagSpectators"))) {
+              String value =
+                  "§7" + (stat.equals("HWS") ? "BEST WS" : stat) + " " + r.stats.text(stat);
+              NameLabel old = nametags.get(r.name);
               m.put(
-                  r.name,
-                  "§7" + (stat.equals("HWS") ? "BEST WS" : stat) + " " + r.stats.text(stat));
+                  r.name, old != null && old.statistic.equals(value) ? old : new NameLabel(value));
+            }
         nametags = Collections.unmodifiableMap(m);
       } else nametags = Collections.emptyMap();
     }
@@ -119,12 +123,17 @@ public final class NativeHooks {
     return true;
   }
 
-  public static String tag(Object entity) {
+  private static NameLabel label(Object entity) {
     if (!LeanSettings.on("nametag")
         || !onPika
         || !tagPhase(ScoutState.currentPhase())
         || !(entity instanceof wn)) return null;
     return nametags.get(((wn) entity).e_());
+  }
+
+  public static String tag(Object entity) {
+    NameLabel l = label(entity);
+    return l == null ? null : l.statistic;
   }
 
   public static String above(Object entity) {
@@ -133,13 +142,33 @@ public final class NativeHooks {
 
   public static String nametag(String original, Object entity) {
     if (LeanSettings.get("nametagPlacement").equals("ABOVE")) return original;
-    String tag = tag(entity);
-    return tag == null ? original : original + " §7[" + tag + "]";
+    NameLabel label = label(entity);
+    return label == null ? original : label.beside(original);
   }
 
   public static boolean chat(EventSendChat event) {
     String msg = event.getMessage().trim();
     if (msg.equalsIgnoreCase("/apikey")) KeyVault.manual(host, System.currentTimeMillis());
+    if (msg.toLowerCase(Locale.ROOT).startsWith("/velvetlean profile ")) {
+      event.setCancelled(true);
+      String action =
+          msg.substring("/velvetlean profile ".length()).trim().toLowerCase(Locale.ROOT);
+      String notice;
+      if (action.equals("start")) {
+        FrameProbe.reset();
+        FrameProbe.enabled = true;
+        notice = "Profiler window started; stop with /velvetlean profile stop";
+      } else if (action.equals("stop")) {
+        FrameProbe.enabled = false;
+        FrameProbe.export();
+        notice = "Profiler stopped and exported locally";
+      } else if (action.equals("export")) {
+        FrameProbe.export();
+        notice = "Profiler exported locally";
+      } else notice = "Use /velvetlean profile start, stop, or export";
+      if (ave.A().h != null) ave.A().h.a(new fa("§bVelvetG §7" + notice));
+      return true;
+    }
     if (!msg.equalsIgnoreCase("/velvetlean")) return false;
     event.setCancelled(true);
     ave.A().a(new LeanScreen());
@@ -150,11 +179,19 @@ public final class NativeHooks {
     FrameProbe.frame();
     TableEffects.nextFrame();
     AsyncImages.frame();
-    if (LeanSettings.on("tabPersistent")) {
-      ave mc = ave.A();
-      ScoutMod m = ScoutMod.getInstance();
-      if (m != null && mc.h != null && !mc.t.al.d()) m.renderTab();
+    ave mc = ave.A();
+    ScoutMod m = ScoutMod.getInstance();
+    if (mc == null || mc.h == null || mc.f == null || m == null || !m.isToggled() || mc.m != null) {
+      TableEffects.clear();
+      return;
     }
+    boolean held = mc.t.al.d();
+    if (!held && (LeanSettings.on("tabPersistent") || TableEffects.tabTail(false))) m.renderTab();
+  }
+
+  public static boolean tabWanted() {
+    ave mc = ave.A();
+    return TabPlacement.active() || LeanSettings.on("tabPersistent") || (mc != null && mc.t.al.d());
   }
 
   public static String apiSummary() {

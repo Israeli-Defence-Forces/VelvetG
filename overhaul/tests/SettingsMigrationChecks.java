@@ -17,7 +17,7 @@ public final class SettingsMigrationChecks {
     LeanSettings.set("tabGameLimit", "8");
     if (!Arrays.equals(Files.readAllBytes(old), original))
       throw new AssertionError("Prior settings changed");
-    Path current = Paths.get("config/velvetg-lean-v2.properties");
+    Path current = Paths.get("config/velvetg-lean-v3.properties");
     String saved = new String(Files.readAllBytes(current), "ISO-8859-1");
     if (!saved.contains("unknownUserSetting=keep"))
       throw new AssertionError("Unknown local setting lost");

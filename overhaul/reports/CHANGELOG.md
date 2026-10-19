@@ -1,3 +1,21 @@
+# Overhaul3 release candidate changelog
+
+Continues the exact Overhaul2 source/patch pipeline and retains all prior repairs.
+
+- Replaced the invented Mojang library URL with local-only empty artifact/repository URLs; retained real Maven path, SHA-1/size, inheritance and the exact vanilla game-JAR selection. No unrelated dependency/classloader/native metadata is changed.
+- Added exclusive locking, target-validated install/remove journals, exact-hash interrupted-transaction recovery, read-only refusal, source/backup race checks and guarded cleanup. Separate Overhaul3 version/library/receipt and v3 settings preserve Overhaul1/2.
+- Removed default roster copies and repeated comparator construction; cached phase/revision preparation controls; preserved explicit sort/cap semantics and source-list ownership.
+- Avoided exception allocation for EXISTING/INHERIT numeric rendering settings, moved repeated palette-key arrays to constants, skipped repeated validation for registered local fonts, cached nametag text joins, and removed the unused per-head image-size query with its two temporary arrays.
+- Fixed a null-TAB condition that forced roster/model rebuilds every tick when TAB was disabled. Native periodic model/history/session refresh remains; disabled tables skip layout construction.
+- Added independent reversible show/hide state, rapid reversal, per-panel/context hide styles/durations, native row/table alpha composition and try/finally NanoVG state restoration. TAB release and HUD hide-while-TAB can continue only within valid native scope/world/module guards. Cosmetic tails default off.
+- Clipped optional image fills to the panel/image intersection so contain/zoom letterboxing does not smear edge texels. Geometry is tested; native visuals remain unverified.
+- Made Maximum FPS/Balanced/Visual presets non-destructive overlays with CUSTOM restoration. Maximum FPS also skips the optional hat pass while retaining player heads and custom saved values.
+- Added startGame head/return, 17 existing splash checkpoint hooks, Glide/module checkpoint recording and background timeline persistence. Added bounded raw client-loop frame interval export and local start/stop/export commands with sample reset. Named/imported profiler preferences are applied immediately in the settings UI.
+- Added TEST-OVERHAUL3-WINDOWS.bat, a privacy-preserving offline/local report, executable installed-mode smoke checks, explicit Java-based HTTPS authentication testing, export ages and a reproducible manual game/benchmark checklist.
+- Expanded Java 8, preset/migration, hidden-model, nametag cache, animation-state, privacy, interruption, package/target refusal, read-only, partial-patch and prior-version preservation tests.
+
+True shader blur/3D mesh heads, native graphics validation and live gameplay/FPS acceptance remain explicitly blocked/pending; no experimental default GL/classloader changes are shipped.
+
 # Overhaul2 changelog
 
 Continues Overhaul1/FIX1 against the same exact collected baseline. Includes every preceding repair.

@@ -136,12 +136,13 @@ public final class LeanScreen extends axu {
         notice = "Exported non-sensitive settings and measurements";
       } else if (id == 26) {
         LeanSettings.importSettings();
+        FrameProbe.enabled = LeanSettings.on("profiler");
         notice = "Imported Lean settings";
       } else if (id == 27) {
         placing = true;
         TabPlacement.begin(l, m);
       } else if (id == 28) {
-        String[] presets = {"MAXIMUM_FPS", "BALANCED", "VISUAL"};
+        String[] presets = {"MAXIMUM_FPS", "BALANCED", "VISUAL", "CUSTOM"};
         String chosen = presets[preset++ % presets.length];
         LeanSettings.preset(chosen);
         notice = "Applied " + chosen;
@@ -153,6 +154,7 @@ public final class LeanScreen extends axu {
         notice = "Saved profile " + LeanSettings.get("profileName");
       } else if (id == 31) {
         LeanSettings.loadProfile();
+        FrameProbe.enabled = LeanSettings.on("profiler");
         FrameProbe.enabled = LeanSettings.on("profiler");
         notice = "Loaded profile " + LeanSettings.get("profileName");
       }

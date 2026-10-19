@@ -45,11 +45,19 @@ public final class TableSupport {
   }
 
   public static int number(String suffix, int fallback, int low, int high) {
+    String raw = value(suffix);
+    if (!numeric(raw)) return fallback;
     try {
-      return Math.max(low, Math.min(high, Integer.parseInt(value(suffix))));
+      return Math.max(low, Math.min(high, Integer.parseInt(raw)));
     } catch (NumberFormatException e) {
       return fallback;
     }
+  }
+
+  private static boolean numeric(String s) {
+    if (s.isEmpty()) return false;
+    char c = s.charAt(0);
+    return (c >= '0' && c <= '9') || c == '-';
   }
 
   public static boolean flag(boolean original, String suffix) {
@@ -58,8 +66,10 @@ public final class TableSupport {
   }
 
   public static float scalar(float original, String suffix) {
+    String raw = value(suffix);
+    if (!numeric(raw)) return original;
     try {
-      float n = Float.parseFloat(value(suffix));
+      float n = Float.parseFloat(raw);
       if (Float.isNaN(n) || Float.isInfinite(n)) return original;
       if (suffix.equals("FontSize")) return Math.max(6, Math.min(20, n));
       if (suffix.equals("NameWidth")) return Math.max(40, Math.min(300, n));
@@ -76,7 +86,9 @@ public final class TableSupport {
   }
 
   public static boolean animationsEnabled() {
-    return !LeanSettings.on("maximumFPS") && !LeanSettings.get("animation").equals("NONE");
+    return !TabPlacement.active()
+        && !LeanSettings.on("maximumFPS")
+        && !LeanSettings.animation().equals("NONE");
   }
 
   private static final Set<String> COLUMNS =
@@ -120,31 +132,61 @@ public final class TableSupport {
     context(h);
     phases[h ? 1 : 0] = phase == null ? ScoutState.Phase.LOBBY : phase;
     if (rows == null) return Collections.emptyList();
+    Preparation p = preparations[h ? 1 : 0];
+    long revision = LeanSettings.revision();
+    ScoutState.Phase current = phases[h ? 1 : 0];
+    if (p == null || p.revision != revision || p.phase != current || p.config != config)
+      preparations[h ? 1 : 0] = p = new Preparation(revision, current, config);
+    // Native table construction consumes but does not modify the input. Preserve default order
+    // without allocating another roster. Explicit sorts always own their mutable copy.
+    if (p.sort.equals("EXISTING"))
+      return rows.size() <= p.limit ? rows : new ArrayList<>(rows.subList(0, p.limit));
     ArrayList<ScoutRow> copy = new ArrayList<>(rows);
-    String sort = value("Sort");
-    if (!sort.equals("EXISTING")) {
-      copy.sort(
+    copy.sort(p.order);
+    return copy.size() > p.limit ? new ArrayList<>(copy.subList(0, p.limit)) : copy;
+  }
+
+  private static final Preparation[] preparations = new Preparation[2];
+
+  private static final class Preparation {
+    final long revision;
+    final ScoutState.Phase phase;
+    final ScoutConfig config;
+    final String sort;
+    final int limit;
+    final Comparator<ScoutRow> order;
+
+    Preparation(long revision, ScoutState.Phase phase, ScoutConfig config) {
+      this.revision = revision;
+      this.phase = phase;
+      this.config = config;
+      sort = value("Sort");
+      limit = number("Limit", 40, 1, 40);
+      final boolean friends = LeanSettings.on("friendsAfterParty");
+      final boolean watched = config != null && config.watchlistFirst.isToggled();
+      final boolean party = config == null || config.partySortFirst.isToggled();
+      order =
           (a, b) -> {
             if (a.spectator != b.spectator) return a.spectator ? 1 : -1;
             if (phase == ScoutState.Phase.ACTIVE) {
-              int order = Integer.compare(team(a.color), team(b.color));
-              if (order != 0) return order;
+              int teamOrder = Integer.compare(team(a.color), team(b.color));
+              if (teamOrder != 0) return teamOrder;
             }
-            if (config != null && config.watchlistFirst.isToggled() && a.watched != b.watched)
-              return a.watched ? -1 : 1;
-            if ((config == null || config.partySortFirst.isToggled()) && a.party != b.party)
-              return a.party ? -1 : 1;
-            if (LeanSettings.on("friendsAfterParty")
-                && ProfileExtras.friend(a.name) != ProfileExtras.friend(b.name))
-              return ProfileExtras.friend(a.name) ? -1 : 1;
-            Double av = a.stats == null ? null : a.stats.sortValue(sort),
-                bv = b.stats == null ? null : b.stats.sortValue(sort);
+            // Native toggles can change without a Lean revision, so read these two when sorting.
+            boolean watchedFirst = config == null ? watched : config.watchlistFirst.isToggled();
+            boolean partyFirst = config == null ? party : config.partySortFirst.isToggled();
+            if (watchedFirst && a.watched != b.watched) return a.watched ? -1 : 1;
+            if (partyFirst && a.party != b.party) return a.party ? -1 : 1;
+            if (friends) {
+              boolean af = ProfileExtras.friend(a.name), bf = ProfileExtras.friend(b.name);
+              if (af != bf) return af ? -1 : 1;
+            }
+            Double av = a.stats == null ? null : a.stats.sortValue(sort);
+            Double bv = b.stats == null ? null : b.stats.sortValue(sort);
             int c = av == null ? (bv == null ? 0 : 1) : (bv == null ? -1 : Double.compare(bv, av));
             return c != 0 ? c : a.name.compareToIgnoreCase(b.name);
-          });
+          };
     }
-    int limit = number("Limit", 40, 1, 40);
-    return copy.size() > limit ? new ArrayList<>(copy.subList(0, limit)) : copy;
   }
 
   private static int team(int color) {
@@ -266,10 +308,7 @@ public final class TableSupport {
             ? p.background.getAlpha()
             : number("Opacity", p.background.getAlpha() * 100 / 255, 0, 100) * 255 / 100;
     boolean changed = !value("Opacity").equals("EXISTING");
-    for (String suffix :
-        new String[] {
-          "TextColor", "SecondaryColor", "HeaderColor", "PanelColor", "RowColor", "SeparatorColor"
-        }) if (!value(suffix).equals("EXISTING")) changed = true;
+    for (String suffix : PALETTE_KEYS) if (!value(suffix).equals("EXISTING")) changed = true;
     if (!changed) return p;
     java.awt.Color background = colorOverride(p.background, "PanelColor");
     return new me.eldodebug.soar.scout.ui.ScoutPalette(
@@ -285,6 +324,10 @@ public final class TableSupport {
         p.self,
         p.shadow);
   }
+
+  private static final String[] PALETTE_KEYS = {
+    "TextColor", "SecondaryColor", "HeaderColor", "PanelColor", "RowColor", "SeparatorColor"
+  };
 
   private static java.awt.Color colorOverride(java.awt.Color original, String suffix) {
     try {
@@ -333,6 +376,15 @@ public final class TableSupport {
 
   public static long partyWindow() {
     return LeanSettings.number("partyWindowMs", 50, 5000);
+  }
+
+  public static boolean needsTable(
+      ScoutTable tab, boolean tabVisible, ScoutTable hudTable, boolean hudVisible) {
+    return (tabVisible && tab == null) || (hudVisible && hudTable == null);
+  }
+
+  public static ScoutState.Phase phase() {
+    return phases[hud ? 1 : 0];
   }
 
   public static ScoutTable build(

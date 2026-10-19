@@ -4,7 +4,7 @@ Reference: v1.2.0, commit `26a3d83c78d14322dd211254bdb33e7dae984d5a`. Its actual
 
 Classifications describe the **baseline**, followed by the implemented changes or remaining work. “Already implemented correctly” means the audited behavior exists in the binary; it does not certify live rendering. Java 8, logic, mock HTTP and installer checks are reported separately. Minecraft, GPU/native initialization, live Pika authentication, Windows cmd.exe/PowerShell 5.1 and FPS have not been tested here.
 
-This is a substantial staged implementation, **not complete feature parity**. Partial features and missing options below are deliberately not presented as completed. Independent waiting/game context settings, bounded row exits and image geometry controls are now implemented. Full-table hide continuation, shader glass and true 3D heads still need work. Current winstreak and remote installed-client badges need an authoritative data source.
+This is a substantial staged implementation, **not complete feature parity**. Partial features and missing options below are deliberately not presented as completed. Independent waiting/game context settings, bounded row exits and image geometry controls are now implemented. Guarded TAB-release/HUD-hide transitions are implemented; shader glass and true 3D heads remain blocked on native graphics validation. Current winstreak and remote installed-client badges need an authoritative data source.
 
 ## Licensing and compatibility
 
@@ -12,14 +12,14 @@ ChuStatsu code is All Rights Reserved; no Java, mixins, render framework or priv
 
 ## Feature matrix
 
-| Feature | ChuStatsu source | Baseline classification | Overhaul2 implementation / limitation |
+| Feature | ChuStatsu source | Baseline classification | Overhaul3 implementation / limitation |
 |---|---|---|---|
 | Independent movable/scalable TAB handle; centering migration | TableHud.java; StatsController.java:514 | Implemented but inferior or missing options | Native TAB drag handle with grid snapping, viewport bounds and atomic Apply/Cancel; additive scale override plus native auto-fit. HUD retains its native drag editor. |
 | 1–40 TAB players; independent API-player cap | ChuStatsuConfig.java:229,380; StatsController.java:118 | Implemented but inferior or missing options | Native TAB allowed up to 200, API cap 40; added hard 1–40 TAB limit and additional independent HUD cap. Native HUD max still also applies. |
 | Waiting/in-game/elsewhere visibility; header and name/rank composition | ChuStatsuConfig.java:220-258 | Implemented but inferior or missing options | Native visibility gates retained. Added separate Waiting/Game settings for each panel: columns, caps, sorting, typography, palette, opacity, geometry, images and motion. Some original global style switches remain shared. |
 | Persistent TAB when key is released | StatsController.java:289-310 | Completely missing | Implemented `tabPersistent`, gated through native renderTab/context rules; default off. |
 | Seven statistic sort orders; social priority; active team colors | StatsController.java:118-135,341-346; TeamOrder.java | Implemented but inferior or missing options | Native global seven-stat sort retained; added independent TAB/HUD sorts with party/watchlist controls, cached friends and active team grouping. Equal-stat tie-break is name. |
-| Player heads; optional enlarged hat layer | StatsController.java:858; ChuStatsuConfig.java:77 | Implemented but inferior or missing options | Existing cached skin texture + hat pass retained; added hat-layer toggle. A true 3D mesh/enlarged-hat option remains absent. |
+| Player heads; optional enlarged hat layer | StatsController.java:858; ChuStatsuConfig.java:77 | Implemented but inferior or missing options | Existing cached skin texture + hat pass retained; added hat-layer toggle. A true 3D mesh/enlarged-hat option remains absent; Maximum FPS suppresses the optional hat pass, and the unused per-frame native image-size query/arrays are removed. |
 | Single-row loading/error states and skeletons | ColumnLayout.java; StatsController.java:707-835 | Implemented but inferior or missing options | Native placeholders retained; separate secret-free API status page added. Dedicated animated skeleton variants remain partial. |
 | Alternating rows, dividers, opacity, spacing, header | ChuStatsuConfig.java; ColumnLayout.java | Implemented but inferior or missing options | Existing independent row backgrounds/dividers/opacity/header retained. Added independent cell padding; shadow options are not fully independent. |
 | Independent HUD position/scale and 1–40 limit | TableHud.java; ChuStatsuConfig.java:112-217 | Already implemented correctly | Existing native draggable HUD, scale and 1–40 max retained, with additional Lean limit. |
@@ -49,16 +49,16 @@ ChuStatsu code is All Rights Reserved; no Java, mixins, render framework or priv
 | Glass panels, shadows, fallback if shaders unavailable | PanelStyle.java | Incompatible and requiring redesign | Existing native panels/shadows retained; Maximum FPS uses one fill. Shader framebuffer/glass port is blocked on mixed LWJGL/NanoVG GPU state validation; no untested native shader changes shipped. |
 | Local PNG selection, independent/random images, alignment/opacity/scale | BackgroundImages.java | Completely missing | Independent local/random PNG images, opacity, contain/cover/stretch, edge/corner alignment and zoom, using bounded worker decode and render-owner upload. External retrieval remains off by default. |
 | Optional Catbox fetch/cache and offline fallback | CatboxGallery.java; BackgroundImages.java | Completely missing | Explicit optional six-character Catbox PNG retrieval with bounded disk/GPU caches; obsolete jobs cancelled/ignored by generation. Blocking reads remain bounded by timeouts. Remote manifest/gallery browsing is not added. |
-| None/Slide/Zoom/Bounce/Pop show/hide and separate durations | TableMotion.java | Implemented but inferior or missing options | Independent per-panel/context show styles and durations; independent native entry/resize toggles/durations; optional fade/slide row exits. Full-table hide continuation remains absent. |
+| None/Slide/Zoom/Bounce/Pop show/hide and separate durations | TableMotion.java | Implemented but inferior or missing options | Independent per-panel/context show styles and durations; independent native entry/resize toggles/durations; optional fade/slide row exits. Independent hide styles/durations now continue on TAB release/HUD hide-while-TAB, with no-jump reversal; invalid world/module/scope/GUI gates stop immediately. Native visuals remain unverified. |
 | Arrival/departure movement and smooth resize | TableLayoutMotion.java | Implemented but inferior or missing options | Native entry/movement/resize retained with independent controls. Optional retained-row fade/slide exits hold cached row data only, clear on phase/generation/columns/settings changes, and enforce 40 total rows. GPU visuals remain unverified. |
-| Low-performance mode | ChuStatsuConfig.java:94; PanelStyle.java; StatsController.java | Implemented but inferior or missing options | Maximum FPS additionally bypasses optional rows/dividers/header embellishments, motion and backgrounds. Context settings/columns are memoized, team color constants reused, and disabled-context table construction skipped. Combined NanoVG batching remains absent; no FPS gain is claimed. |
-| Settings UI, toggle binding, HUD editor and saved-name-column migration | ChuStatsu.java; ChuStatsuConfig.java:29,401-420 | Implemented but inferior or missing options | Native controls/keybinds retained. Added searchable responsive Lean UI, native column editor, typed value hints, real TAB drag, API status page, named allowlisted profiles/presets, transactional imports, separate v2 settings migration and unknown-local-property preservation. |
+| Low-performance mode | ChuStatsuConfig.java:94; PanelStyle.java; StatsController.java | Implemented but inferior or missing options | Maximum FPS additionally bypasses optional rows/dividers/header embellishments, motion and backgrounds. Context settings/columns/preparation controls are memoized; default roster copies and inherited numeric-setting exceptions are removed; registered-font validation and nametag joins are cached; hidden null tables no longer force per-tick model rebuilds. Combined NanoVG batching remains absent; no FPS gain is claimed. |
+| Settings UI, toggle binding, HUD editor and saved-name-column migration | ChuStatsu.java; ChuStatsuConfig.java:29,401-420 | Implemented but inferior or missing options | Native controls/keybinds retained. Added searchable responsive Lean UI, native column editor, typed value hints, real TAB drag, API status page, named allowlisted profiles/presets, transactional imports, separate v3 settings migration from v2/legacy and unknown-local-property preservation. |
 | /stats player and settings commands | StatsController.java:954-975 | Already implemented correctly | Existing /stats, /velvetg and /velvetgdebug preserved; added /velvetlean. No API-key chat command is introduced. |
 | Debug dump of raw TAB and experimental identity logs | ChuStatsuConfig.java:385; StatsController.java:1000-1133 | Not worth integrating / excluded | Raw personal TAB/identity dumps intentionally not ported. Added bounded, secret-free profiler/cache/queue/init reports instead. |
 | Denick tracking and resolved-name presentation | DenickTracker.java; ChuStatsuConfig.java:340,361-365 | Not worth integrating / excluded | Explicitly excluded. No denick tracker, identity recovery, alias discovery or hidden-name revelation added. |
 | Session deltas, encounter/player history, notes, threat/watchlists, Dynamic Widget, Violet, SnapTap | User requirements; no corresponding replacement system established in inspected reference | Already implemented correctly | Existing advanced modules/classes/assets/configuration retained. Unchanged entries proven byte-identical; profile-save implementations changed only to coalesce disk writes. No gameplay/input/module removal. |
 | Lazy screenshot gallery with bounded GPU lifecycle | User requirements; not a ChuStatsu gallery feature | Implemented but inferior or missing options | All Overhaul1 bounded lazy gallery/resource ownership work retained. Also removed eager built-in cape preview/bind preloads; original custom-cape registration remains pending local profiling. |
-| Frame/initialization/GC/cache/worker/request instrumentation and reproducible FPS benchmark | User requirements; no equivalent complete profiler established in reference | Completely missing | Implemented bounded interval/CPU/TAB/HUD percentiles, GC/cache/thread/request counters and startup checkpoints; local process sampler supplied. GPU timing, real FPS/1% lows and complete scene profiling require local Minecraft execution. |
+| Frame/initialization/GC/cache/worker/request instrumentation and reproducible FPS benchmark | User requirements; no equivalent complete profiler established in reference | Completely missing | Implemented bounded interval/CPU/TAB/HUD percentiles, GC/cache/thread/request counters and startup checkpoints; local process sampler and privacy-safe Windows smoke kit supplied, with startup timeline/raw loop-frame CSV exports. GPU timing, real FPS/1% lows and complete scene profiling require local Minecraft execution. |
 
 ## All 104 declared reference controls
 
@@ -105,8 +105,8 @@ The mapping below covers every public reference field. “Retained” is code-au
 | `hudBackgroundOpacity` | Native independent panel opacity retained. |
 | `hudShowAnimation` | Independent hudShowAnimation and Waiting/Game overrides; five show styles. |
 | `hudShowDuration` | Independent hudShowMs, 50–5000 ms, with context overrides. |
-| `hudHideAnimation` | Still absent: native visibility stops drawing; full-table hide continuation not implemented. |
-| `hudHideDuration` | Still absent with full-table hide continuation. |
+| `hudHideAnimation` | Independent native-context hide styles, valid retained-table continuation and reversal state; module/world/scope/GUI gates stop immediately. |
+| `hudHideDuration` | Independent HideMs per panel/context, 50–5000 ms; native visuals pending local smoke test. |
 | `hudResizeDuration` | Independent hudResizeMs and ResizeAnimation (native/none), including context overrides. |
 | `hudEntryAnimation` | Native arrival/movement retained; independent hudEntryAnimation EXISTING/NONE. |
 | `hudEntryDuration` | Independent hudEntryMs and context overrides. |
@@ -138,8 +138,8 @@ The mapping below covers every public reference field. “Retained” is code-au
 | `tabBackgroundOpacity` | Native independent panel opacity retained. |
 | `tabShowAnimation` | Independent tabShowAnimation and Waiting/Game overrides; five show styles. |
 | `tabShowDuration` | Independent tabShowMs, 50–5000 ms, with context overrides. |
-| `tabHideAnimation` | Still absent: native visibility stops drawing; full-table hide continuation not implemented. |
-| `tabHideDuration` | Still absent with full-table hide continuation. |
+| `tabHideAnimation` | Independent native-context hide styles, valid retained-table continuation and reversal state; module/world/scope/GUI gates stop immediately. |
+| `tabHideDuration` | Independent HideMs per panel/context, 50–5000 ms; native visuals pending local smoke test. |
 | `tabResizeDuration` | Independent tabResizeMs and ResizeAnimation (native/none), including context overrides. |
 | `tabEntryAnimation` | Native arrival/movement retained; independent tabEntryAnimation EXISTING/NONE. |
 | `tabEntryDuration` | Independent tabEntryMs and context overrides. |

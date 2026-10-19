@@ -1,5 +1,5 @@
 import pathlib,zipfile,json,hashlib,shutil
-R=pathlib.Path(__file__).resolve().parent;D=R/'dist/VelvetG-Lean-Overhaul2';
+R=pathlib.Path(__file__).resolve().parent;D=R/'dist/VelvetG-Lean-Overhaul3-RELEASE-CANDIDATE';
 if D.exists():shutil.rmtree(D)
 D.mkdir(parents=True,exist_ok=True)
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()

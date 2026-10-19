@@ -13,6 +13,12 @@ public final class FrameProbe {
   private static int fn, tn, hn;
   private static long last;
 
+  public static void reset() {
+    fn = tn = hn = cn = 0;
+    last = 0;
+    cpuStart = 0;
+  }
+
   public static long start() {
     return enabled ? System.nanoTime() : 0;
   }
@@ -79,6 +85,15 @@ public final class FrameProbe {
         b[(int) Math.ceil(n * .99) - 1] / 1e6);
   }
 
+  private static java.util.List<String> samples() {
+    java.util.List<String> lines = new java.util.ArrayList<>();
+    lines.add("sample,frameIntervalMs");
+    int n = Math.min(4096, fn), first = fn - n;
+    for (int i = 0; i < n; i++)
+      lines.add(i + "," + String.format(Locale.ROOT, "%.6f", frames[(first + i) & 4095] / 1e6));
+    return lines;
+  }
+
   private static String gc() {
     long count = 0, ms = 0;
     for (GarbageCollectorMXBean g : ManagementFactory.getGarbageCollectorMXBeans()) {
@@ -96,6 +111,10 @@ public final class FrameProbe {
   public static void export() {
     try {
       java.nio.file.Files.createDirectories(java.nio.file.Paths.get("config"));
+      java.nio.file.Files.write(
+          java.nio.file.Paths.get("config/velvetg-frame-samples.csv"),
+          samples(),
+          java.nio.charset.StandardCharsets.UTF_8);
       java.nio.file.Files.write(
           java.nio.file.Paths.get("config/velvetg-performance.txt"),
           Arrays.asList(

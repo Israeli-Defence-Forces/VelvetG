@@ -28,10 +28,10 @@ public final class LocalFonts {
   }
 
   public static Font get(String name, Font fallback) {
-    if (!name.equals("POPPINS") && !name.matches("[A-Za-z0-9 _.-]{1,80}\\.(ttf|otf)")
-        || name.contains("..")) return fallback;
     Slot s = SLOTS.get(name);
     if (s == null) {
+      if ((!name.equals("POPPINS") && !name.matches("[A-Za-z0-9 _.-]{1,80}\\.(ttf|otf)"))
+          || name.contains("..")) return fallback;
       if (SLOTS.size() >= 2) return fallback;
       s = new Slot();
       SLOTS.put(name, s);

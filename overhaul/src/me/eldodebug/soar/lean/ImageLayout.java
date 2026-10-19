@@ -2,7 +2,7 @@ package me.eldodebug.soar.lean;
 
 /** Reusable geometry output; no per-frame layout allocation. */
 public final class ImageLayout {
-  public float x, y, width, height;
+  public float x, y, width, height, clipX, clipY, clipWidth, clipHeight;
 
   public void compute(
       float px,
@@ -17,7 +17,9 @@ public final class ImageLayout {
     if (iw < 1 || ih < 1 || pw <= 0 || ph <= 0) {
       x = px;
       y = py;
-      width = height = 0;
+      width = height = clipWidth = clipHeight = 0;
+      clipX = px;
+      clipY = py;
       return;
     }
     if (mode.equals("STRETCH")) {
@@ -35,5 +37,9 @@ public final class ImageLayout {
     if (align.contains("RIGHT")) x = px + pw - width;
     if (align.contains("TOP")) y = py;
     if (align.contains("BOTTOM")) y = py + ph - height;
+    clipX = Math.max(px, x);
+    clipY = Math.max(py, y);
+    clipWidth = Math.max(0, Math.min(px + pw, x + width) - clipX);
+    clipHeight = Math.max(0, Math.min(py + ph, y + height) - clipY);
   }
 }

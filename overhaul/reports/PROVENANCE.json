@@ -28,6 +28,8 @@
     "GPU/native context regression",
     "game FPS benchmarks"
   ],
-  "release": "Overhaul2",
-  "previousPatchComparisonSha256": "ce837ffea67d83416989e8ea37f38ce27676d7f00d109b0081580aeb5f702e21"
+  "release": "Overhaul3 release candidate",
+  "previousPatchComparisonSha256": "6022539b92134ccc5c9d4753b670f279de55971ceff5684f789b6c7b0230a73b",
+  "overhaul1ComparisonSha256": "ce837ffea67d83416989e8ea37f38ce27676d7f00d109b0081580aeb5f702e21",
+  "patchedSha256": "c48123769f5364be62fbdd9fb1e622c4c176877b3d86e79345d00687ace599d4"
 }
