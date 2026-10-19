@@ -7,6 +7,10 @@ JDK=pathlib.Path(os.environ['JAVA_HOME'])/'bin' if os.environ.get('JAVA_HOME') e
 MC=pathlib.Path(os.environ.get('MINECRAFT_JAR','minecraft-1.8.9.jar')).resolve()
 DEP=pathlib.Path(os.environ.get('DEPENDENCIES_DIR','libraries')).resolve()
 W=R/'work';W.mkdir(exist_ok=True)
+# A removed helper must not survive in a later distribution.
+for generated in [W/'classes',W/'tools']:
+ if generated.exists():shutil.rmtree(generated)
+ generated.mkdir()
 def run(args):subprocess.run([str(x) for x in args],check=True,cwd=R)
 assert hashlib.sha256(BASE.read_bytes()).hexdigest()=='3e4b0190e26b4a1540ac23ff018a8c8280b8ab447c34cce0fc5bf8cc6c2a6813','Wrong baseline; refusing to patch'
 deps=list(DEP.rglob('*.jar')); toolcp=os.pathsep.join([str(W/'tools'),str(BASE)]+[str(x) for x in deps])

@@ -1,6 +1,6 @@
 test_transaction (__main__.Installer.test_transaction) ... ok
 
 ----------------------------------------------------------------------
-Ran 1 test in 115.807s
+Ran 1 test in 82.079s
 
 OK

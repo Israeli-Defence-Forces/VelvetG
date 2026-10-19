@@ -119,6 +119,20 @@ public final class StructuralChecks {
               if (Arrays.asList("listFiles", "delete", "loadData", "loadImage", "openConnection")
                   .contains(name)) throw new AssertionError("Startup screenshot I/O regression");
             }
+      ClassNode capes = classes.get("me/eldodebug/soar/management/cape/CapeManager");
+      for (MethodNode m : capes.methods)
+        if (m.name.equals("<init>"))
+          for (AbstractInsnNode i : m.instructions.toArray())
+            if (i instanceof MethodInsnNode) {
+              MethodInsnNode a = (MethodInsnNode) i;
+              if (a.owner.equals("me/eldodebug/soar/management/nanovg/NanoVGManager")
+                  && a.name.equals("loadImage"))
+                throw new AssertionError("Eager cape preview upload regression");
+              if (a.name.equals("a")
+                  && a.desc.equals("(Ljy;)V")
+                  && !a.owner.startsWith("me/eldodebug/soar/"))
+                throw new AssertionError("Eager cape texture binding regression");
+            }
       System.out.println(
           "PASS "
               + verified
@@ -129,7 +143,7 @@ public final class StructuralChecks {
               + " classes parsed; "
               + links
               + " new call descriptors resolved; no baseline entries deleted; JSON repair"
-              + " instructions unchanged");
+              + " instructions unchanged; no startup cape preview preloads");
     }
   }
 }

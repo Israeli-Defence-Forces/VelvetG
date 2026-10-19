@@ -11,6 +11,19 @@ No Minecraft launch, FPS increase, 1% low, GPU timing, real startup reduction or
 - Existing scheduler tests use a local HTTP server and real client scheduler/JSON parser, including deduplication, stale retention, cooldown and bounded queues. Mock network timings are not real Pika latency measurements.
 - `offline-benchmark.txt` contains the actual current Java 8 microbenchmark output: disabled-probe entry cost and synthetic 40-row preparation. These loops exclude GPU calls, font rasterization, API work, Minecraft and normal scene rendering. JIT, host scheduling and synthetic inputs materially limit their meaning. They cannot be used to estimate game FPS.
 
+## Overhaul2 comparison executed here
+
+`build-comparison.json` contains the exact hashes and raw results from the same Java 8 harness. `tests/compare_builds.py` reproduces it using the private original, the previous installed/patched JAR (optional PREVIOUS_PATCH_JAR), and the rebuilt current JAR.
+
+| Workload | Original | Overhaul1 | Overhaul2 |
+|---|---:|---:|---:|
+| Profile HTTP requests for the same player across three stat selections, local HTTP server | 3 | 3 | 1 |
+| Median synthetic 40-row preparation, 3 JVM runs, ns/call | Not applicable: original has no TableSupport helper | 465.775206 | 658.568584 |
+
+The CPU microbenchmark did **not** improve in this run. Individual samples vary substantially; all are recorded, without discarding slower results. The additional context-aware preparation must not be described as a measured speedup. This tiny isolated workload does not measure table construction, font/layout rendering, frame times, startup, native driver work or game FPS.
+
+The HTTP comparison is an executed request-count result against loopback fixtures. It demonstrates coalescing, not production Pika latency or authenticated availability. Eager cape-preview preload elimination is proven by bytecode guards; no startup-seconds saving is measured.
+
 ## Expected mechanisms, still requiring runtime measurement
 
 Background image preparation, bounded GPU uploads, text-measurement reuse and coalesced writes should reduce particular render-thread and disk workloads. Original lazy screenshot startup had already removed bulk decoding, so the old reported 3–7 minute startup delay cannot honestly be attributed entirely to this new patch. Startup checkpoint measurements are needed to locate remaining font, NanoVG/context, custom-cape, resource-pack, module and driver delays.

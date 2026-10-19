@@ -1,39 +1,30 @@
 # Completed, partial and blocked work
 
-This package is an incrementally tested native overhaul stage, not a claim that every requested ChuStatsu feature is finished.
+Overhaul2 continues the native implementation. It is not a claim that every reference feature or platform test is finished.
 
-## Implemented in code and covered by offline checks
+## Implemented
 
-Exact-hash reproducible patch workflow; source and Java 8 tools; baseline-entry preservation; constructor screenshot I/O/deletion removal; asynchronous gallery discovery and on-demand decode; bounded render-owner GPU cache and STB cleanup; existing JSON VerifyError repair preservation; Discord close repair; hard request/profile bounds; cancellation/epoch protections; safe production HTTP/authentication endpoint handling; protected key-file compatibility; opt-in bounded key capture and masked entry; cached guild/friends; shared-cache TAB/HUD extensions; column order/hiding; independent sorts/fonts/spacing/limits; licensed lazy Poppins/local fonts; cache-only nametags above/beside; optional show transitions and local/random/explicit Catbox backgrounds; reversible Maximum FPS presentation mode; text-measurement caches; debounced configuration mirrors; bounded instrumentation; source/tests/install/verify/rollback scripts.
+All Overhaul1/FIX1 screenshot, API authentication, QUAD, bytecode repair, bounded image/text/cache, protected-key, configuration-write, instrumentation and installer work is retained. New code adds context-specific TAB/HUD settings; actual TAB drag/grid/viewport positioning; column toggle/reorder editing; independent sizes, palettes, spacing, image geometry and show/entry/resize/row-exit controls; nametag phase/spectator scopes; cached friend highlighting; explicit match-counter parsing; configurable experimental arrival window; grouped profile enrichment; named non-sensitive profiles and status UI; disabled-context table-build suspension; stronger Maximum FPS presentation bypass; removal of eager cape preview preload calls; and isolated Overhaul2 installation/settings migration.
 
-Graphics threading/lifecycle and hooks are implemented, structurally checked and Java-verified, but not executed against a real OpenGL context here. Tests using mock graphics or IPC are labelled as such.
+Existing sessions/deltas/history/notes/watchlists/threat assessment, Dynamic Widget, Violet, SnapTap/input, resource packs and modules are retained. Original unmodified classes/assets remain byte-identical. No denicking or identity recovery is added. No Fabric/OneConfig/Java 21 runtime is introduced.
 
-## Existing functionality retained
+## Remaining partial features and concrete constraints
 
-Native visibility scopes, HUD editor/grid snapping, appearance controls, heads, spectator/team/rank logic, seven-stat sorting, layouts/presets, sessions/deltas/history, notes/watchlists/threats, approximate party grouping, Dynamic Widget, Violet and input/module behavior. Original assets and all unmodified classes remain byte-identical. Only the two existing property-save implementations change how writes are scheduled, preserving their property data.
+- Full-table hide continuation is absent: native HUD/TAB visibility methods stop drawing immediately. Safe continuation needs retained-table rendering tied to actual world, settings-screen and key visibility; this stage retains departing player rows only. Row exits are opt-in; expired rows are released on the next native table rebuild (normally up to 250 ms later).
+- Entry/movement and resize use the native animation engine, with independent toggles/durations. New row exits support fade/slide. Arbitrary per-row zoom/bounce/pop geometry is not implemented. Show transitions support the five requested styles.
+- Independent fonts/colors/columns/geometry and waiting/game presentation controls are supplied. Some original global controls remain global: full theme preset selection, text-shadow styling and separator-shadow styling. Dedicated animated skeletons, full fixed-name-column alternatives and every rank-formatting variant are not reproduced. NameWidth caps text while preserving native minimum/rank/marker widths.
+- A true 3D head mesh and shader/framebuffer glass implementation require mixed LWJGL/NanoVG state and GPU validation. The native flat head/hat pass and panels are retained; no unvalidated shader/native dependency replacement is shipped.
+- Remote installed-client badges need a trusted compatible attestation provider. None was present in the installed client/reference integration environment; no guessed badge is shown.
+- Current winstreak has no confirmed authoritative response source. Highest winstreak remains accurately labelled HWS/BEST WS. No fabricated current streak or hidden identity is used.
+- Explicit optional Catbox PNG retrieval, bounded cache, stale-job invalidation, local/random images and geometry controls are implemented. Remote gallery/manifest browsing is absent. An in-progress Java URLConnection read can finish or hit its bounded timeout after cancellation; stale results are never selected.
+- Original SVG/game-skin wrapper caches are not globally evicted: those handles can wrap Minecraft-owned textures. Blind deletion could remove game textures; the new file-image cache has separate ownership/bounds. Full HUD/TAB frame batching and suspension based only on an unheld TAB key remain unimplemented. Disabled contexts skip new table construction.
+- Custom capes still use the original decode/registration path. The safe built-in preview/bind preloads are removed; changing selected/custom-cape registration and resource/font startup ordering needs local checkpoint/GPU evidence. This package does not rewrite chunk/entity/packet behavior or claim a whole-engine optimization.
+- API-key capture uses the audited English server-shaped response inside an explicit Pika request window. Actual live message shape/key issuance/authentication needs the local session; credentials were correctly excluded from collection. Automatic fetching remains opt-in and masked manual entry remains available.
+- Optional font registrations remain bounded to two per run (8 MiB each); more selections require restart because the native font lifetime API has no safe per-font deletion path established here. New file images use at most 24 entries/64 MiB GPU bytes and 1024-pixel previews. GPU lifecycle is implemented but unexecuted here.
+- Native HUD maximum and shared API fetch maximum still also apply; set each to 40 to display/fetch 40 rows. Additive context caps do not silently rewrite native settings.
 
-## Partial or not implemented
+## Platform and performance tests still required
 
-- True draggable TAB handle (click positioning is supplied); completely separate waiting/active appearance profiles; separate rank-combination, friend-highlight, skeleton and nametag phase options.
-- Native entry/movement/resize motion is retained, but departed rows are dropped by the existing renderer. Full row exit/hide continuation requires a retained-row renderer and lifecycle tests; independent TAB/HUD show/hide/entry/exit/resize durations are not implemented.
-- Image opacity/alignment/scaling controls are fixed to 18%/panel stretch. Explicit optional Catbox PNG retrieval is implemented, but browsing its remote gallery/manifest and complete cancellation parity are not.
-- The original resource/SVG/game-skin wrapper caches are not globally bounded by this patch. In particular, safely evicting wrapped Minecraft texture handles requires confirming ownership flags against a live GPU; deleting those handles blindly can delete game-owned textures. Reported image counts/bytes describe the new file-image pool, not every OpenGL allocation.
-- Shared text/layout caching is improved; complete hidden-component suspension and combined HUD/TAB NanoVG frame batching are not implemented. Fonts still use the native upload/initialization path; custom capes/resource packs need local timings before further changes.
-- Exact ChuStatsu match-counter overview parser, fixed/dynamic name column alternatives and independent ping-unit controls remain missing. Existing native header/session summaries and latency behavior are preserved.
-- Badge attestation is blocked by the absence of a trusted compatible remote-client provider. No fabricated badge is shown.
-- A current winstreak source is not established: the confirmed leaderboard statistic is **highest** winstreak. It remains HWS/BEST WS; current streak is not fabricated.
-- Shader glass/framebuffer port and true 3D head mesh require GPU/mixed LWJGL state validation. Existing native panels/skin hat layer are retained instead of introducing unverified native replacements.
-- Profile hydration is bounded but does not yet have a separate per-profile pending-dedup map. Existing core-stat deduplication is preserved.
-- API auto-capture expects the reference's English server-shaped header/key response within an explicit Pika request window. Actual server message shape, key issuance and live authenticated requests could not be tested without the game session/key, which was correctly excluded from collection. Automatic capture defaults off and manual entry remains available.
-- Optional font registrations are bounded to two/run, at most 8 MiB each; restart to select further fonts. File previews are downsampled to 1024 pixels per dimension and cached GPU memory is bounded to 64 MiB/24 entries. Native GPU allocation/deallocation requires local validation; no claim of a measured GPU memory reduction is made.
-- Secret-free exports include only additive Lean settings, not the full original client configuration. Original tools remain available for existing settings. Settings edits are saved on Apply; two original mirror writes are coalesced after 500 ms idle. Abrupt process termination can lose that short pending interval.
+This Linux cloud has no Minecraft window/account/native rendering session. No actual Minecraft launch, Pika login/authenticated request, Windows cmd.exe/PowerShell 5.1 execution, resource-pack reload, gameplay input test, GPU frame/VRAM test, startup-time/FPS/1% lows benchmark or real 40-player render-overhead measurement was performed.
 
-## Unverified platform/performance checks
-
-No Minecraft window, native context startup, actual multiplayer server, live Pika authentication, resource-pack reload, hundreds-of-real-images gallery interaction, mouse/keybind gameplay regression, Windows cmd.exe execution, Windows PowerShell 5.1, launcher selection/download behavior, FPS, 1% lows or GPU timings were executed in this Linux cloud environment.
-
-PowerShell 7/Linux runs the actual installer and Java 8 patcher against temporary launcher layouts with spaces/special characters, checks preservation, verifies metadata, detects tampering and exercises rollback. That is useful executable coverage, not a Windows/Minecraft launch claim. The batch wrappers are short and quoted, but Windows execution still needs validation. The original profile and library remain available if the new version fails.
-
-Use the supplied local measurement instructions and export only the non-sensitive profiler report after the first local launch. No API key, raw launcher account file or screenshot upload is needed for that validation.
-
-Automatic denicking/identity recovery is explicitly excluded and not implemented.
+Real Java 8, mock/local HTTP, class verification, CPU geometry/state, disk migration/write and PowerShell 7/Linux installer tests are reported separately in TESTING.md. The local benchmark/profiler tools are included for equivalent-scene measurements. The original and Overhaul1 versions remain available if the new version fails.

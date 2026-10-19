@@ -1,8 +1,8 @@
-PASS 52 modified/new Java 8 classes JVM and ASM verified; 1956 inherited classes byte-identical; 2008 classes parsed; 225 new call descriptors resolved; no baseline entries deleted; JSON repair instructions unchanged
+PASS 68 modified/new Java 8 classes JVM and ASM verified; 1953 inherited classes byte-identical; 2021 classes parsed; 458 new call descriptors resolved; no baseline entries deleted; JSON repair instructions unchanged; no startup cape preview preloads
 
 PASS: 285 inherited Scout/module startup classes JVM-verified without game initialization
 
-PASS: 315 inherited Scout/module startup classes JVM-verified without game initialization
+PASS: 328 inherited Scout/module startup classes JVM-verified without game initialization
 
 PASS 85 kernel, security, bounded cache, gallery and mock HTTP checks
 
@@ -15,3 +15,9 @@ PASS 3 coalesced-write, shutdown-flush and unknown-setting preservation checks; 
 PASS 5 Discord null-stop, uninitialized-close, connected-close, repeated-close and IOException checks (IPC mocked)
 
 PASS 3 real-profile-worker generation cancellation/visibility checks (session and HTTP mocked)
+
+PASS 9 real-profile-executor deduplication, shared enrichment and cache-merge checks (HTTP/native session mocked)
+
+PASS 60 context settings, safe validation, 40-player limits, drag/image geometry, match counters, nametag scopes and profile-group checks (no GPU/game launch)
+
+PASS 4 original-setting migration, version separation, unknown-setting preservation and secret-free export checks

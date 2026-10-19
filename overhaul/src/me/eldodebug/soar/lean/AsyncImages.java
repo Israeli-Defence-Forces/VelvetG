@@ -34,7 +34,7 @@ public final class AsyncImages {
   private static final class Entry {
     volatile Pixels ready;
     volatile boolean done, stale;
-    int id;
+    int id, width, height;
     long bytes, used;
     volatile long stamp;
     long checkAt;
@@ -137,6 +137,8 @@ public final class AsyncImages {
         pixels.flip();
         e.id = NanoVG.nvgCreateImageRGBA(ctx, w, h, 0, pixels);
         if (e.id > 0) {
+          e.width = w;
+          e.height = h;
           e.bytes = (long) w * h * 4;
           bytes += e.bytes;
         }
@@ -186,6 +188,12 @@ public final class AsyncImages {
         it.remove();
       }
     }
+  }
+
+  public static long dimensions(File f) {
+    if (Thread.currentThread() != owner) return 0;
+    Entry e = CACHE.get(key(f));
+    return e == null ? 0 : ((long) e.width << 32) | (e.height & 0xffffffffL);
   }
 
   public static int image(File f) {

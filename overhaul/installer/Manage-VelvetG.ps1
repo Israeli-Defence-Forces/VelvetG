@@ -7,8 +7,8 @@ $package=$PSScriptRoot
 $expected='3e4b0190e26b4a1540ac23ff018a8c8280b8ab447c34cce0fc5bf8cc6c2a6813'
 $mcExpected='14f0d96d1a56fb4f5c3b2233d00699525893fe5ce3dcf181e7de59120595d298'
 $oldCoordinate='me.eldodebug:GlideClient:2.0.9.6-lean-fixed-20261016'
-$newRelease='2.0.9.6-lean-overhaul1'
-$newId='VelvetG-Lean-Overhaul1'
+$newRelease='2.0.9.6-lean-overhaul2'
+$newId='VelvetG-Lean-Overhaul2'
 $state=$null
 $receiptPath=$null
 function Hash([string]$p){return (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant()}
@@ -43,14 +43,14 @@ $lock=$null;$stage=$null;$created=New-Object 'System.Collections.Generic.List[st
 try {
  if([string]::IsNullOrWhiteSpace($GameDir)){throw 'GameDir must be a non-empty directory path.'}
  $root=[IO.Path]::GetFullPath($GameDir.Trim().Trim('"'))
- $state=Join-Path $root 'velvetg-lean-overhaul'
+ $state=Join-Path $root 'velvetg-lean-overhaul2'
  $receiptPath=Join-Path $state 'receipt.json'
  if(-not (Test-Path -LiteralPath $root -PathType Container)){throw 'Minecraft directory does not exist. Pass -GameDir with the actual directory.'}
  $script:javaExecutable=Resolve-VelvetJava $JavaPath
  $manifest=ReadJson (Join-Path $package 'package.json')
  foreach($file in $manifest.files.PSObject.Properties){$p=Join-Path $package $file.Name;if((Hash $p) -ne $file.Value){throw ('Package checksum mismatch: '+$file.Name)}}
  if($Action -ne 'Install'){
-  if(-not (Test-Path -LiteralPath $receiptPath)){throw 'No Overhaul1 receipt was found. Original installation was not changed.'}
+  if(-not (Test-Path -LiteralPath $receiptPath)){throw 'No Overhaul2 receipt was found. Original installation was not changed.'}
   $r=ReadJson $receiptPath
   if((Hash $r.original) -ne $expected -or (Hash $r.backup) -ne $expected){throw 'Original or backup hash mismatch. Refusing automatic changes.'}
   if((Hash $r.library) -ne $r.librarySha256 -or (Hash $r.versionJson) -ne $r.versionSha256){throw 'Installed patch or version metadata changed. Refusing automatic removal.'}
@@ -68,7 +68,7 @@ try {
   }else{Write-Host 'Installation hashes and launcher metadata verified offline. No game launch was performed.'}
   exit 0
  }
- if(Test-Path -LiteralPath $receiptPath){throw 'Overhaul1 is already installed. Run VERIFY-INSTALLATION.bat or RESTORE-BACKUP.bat.'}
+ if(Test-Path -LiteralPath $receiptPath){throw 'Overhaul2 is already installed. Run VERIFY-INSTALLATION.bat or RESTORE-BACKUP.bat.'}
  $baseline=Join-Path $root 'libraries/me/eldodebug/GlideClient/2.0.9.6-lean-fixed-20261016/GlideClient-2.0.9.6-lean-fixed-20261016.jar'
  if(-not (Test-Path -LiteralPath $baseline) -or (Hash $baseline) -ne $expected){throw 'Installed Lean JAR is missing or differs from the collected build. No files changed.'}
  $versionMatches=@()
@@ -134,7 +134,7 @@ try {
  [IO.File]::Move($preparedJson,$versionJson);$created.Add($versionJson)
  $receipt=[PSCustomObject]@{schema=1;original=$baseline;backup=$backup;library=$library;librarySha256=(Hash $library);versionJson=$versionJson;versionSha256=(Hash $versionJson);coordinate=$coordinate}
  $preparedReceipt=Join-Path $stage 'receipt.json';WriteJson $receipt $preparedReceipt;[IO.File]::Move($preparedReceipt,$receiptPath)
- Write-Host 'Installed separate version VelvetG-Lean-Overhaul1. Select it in a new launcher installation. Your original profile is unchanged.'
+ Write-Host 'Installed separate version VelvetG-Lean-Overhaul2. Select it in a new launcher installation. Your original profile is unchanged.'
  exit 0
 }catch{
  foreach($path in $created){if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue}}

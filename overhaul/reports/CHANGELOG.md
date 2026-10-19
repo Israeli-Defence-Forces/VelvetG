@@ -1,3 +1,19 @@
+# Overhaul2 changelog
+
+Continues Overhaul1/FIX1 against the same exact collected baseline. Includes every preceding repair.
+
+- Removed eager built-in cape preview uploads and startup cape binding. Existing on-demand preview drawing and game texture binding remain. Custom-cape decode/registration is retained.
+- Grouped pending profile enrichment by player/session across stat selections. Duplicate cache-key callbacks are coalesced; successful profiles merge into every waiting mode/period cache. The existing bounded executor is reused; failed profile fetches have a 30-second admission cooldown. Added a post-response generation guard before parsing social data.
+- Added independent waiting/active TAB and HUD profiles for columns, limits, sort, font/size, spacing, heads, header, rank placement, rows, dividers, shadow, scale, radius, opacity, palette, backgrounds and motion controls.
+- Added native column toggle/reorder UI, value hints, responsive settings pagination, a once-per-second API status page, named secret-free profiles and Maximum FPS/Balanced/Visual presets.
+- Added actual TAB dragging, grid snapping, viewport bounds and atomic two-coordinate Apply. Preserved the native HUD editor.
+- Added independently timed native entry/resize motion, optional bounded cached row exits, independent panel show motion and image opacity/fit/alignment/zoom. Obsolete image jobs are cancelled/ignored using per-slot generations.
+- Added explicit nametag phase/spectator controls, configurable cached friend highlighting/order, experimental party arrival window, optional match counters from visible TAB text, and independent ping units.
+- Memoized resolved context settings and column lists; moved team color constants out of sort comparisons; skipped table construction in disabled contexts. Maximum FPS bypasses optional row/divider/shadow/motion/background work without rewriting normal settings.
+- Added isolated Overhaul2 version/library/receipt, first-use read migration into a separate v2 settings file, preservation of unknown local properties, transactional validation and secret-free named-profile import/export.
+- Build now clears generated tool/helper class directories so removed classes cannot leak into subsequent packages.
+- Added Java 8 structural, profile-coalescing, retained-row, geometry, settings, migration and installer preservation regression coverage. No Minecraft/FPS or Windows PowerShell 5.1 result is claimed.
+
 # Overhaul1 changelog
 
 Target: exact collected 2.0.9.6-lean-fixed-20261016; Java 8 runtime.

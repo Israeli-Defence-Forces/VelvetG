@@ -9,7 +9,7 @@ import unittest
 R = pathlib.Path(__file__).resolve().parents[1]
 PS = pathlib.Path(os.environ.get('POWERSHELL_EXECUTABLE', shutil.which('pwsh') or 'pwsh'))
 JAVA = pathlib.Path(os.environ.get('JAVA8', shutil.which('java') or 'java')).resolve()
-PACKAGE = pathlib.Path(os.environ.get('PACKAGE_DIR', str(R if (R/'package.json').exists() else R/'dist/VelvetG-Lean-Overhaul1')))
+PACKAGE = pathlib.Path(os.environ.get('PACKAGE_DIR', str(R if (R/'package.json').exists() else R/'dist/VelvetG-Lean-Overhaul2')))
 HARNESS = r'''
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version 2

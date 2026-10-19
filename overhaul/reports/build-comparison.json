@@ -1,0 +1,30 @@
+{
+  "runtime": "Java 8, Linux",
+  "kind": "synthetic CPU and local HTTP only; no Minecraft/native rendering/FPS",
+  "variants": {
+    "original": {
+      "sha256": "3e4b0190e26b4a1540ac23ff018a8c8280b8ab447c34cce0fc5bf8cc6c2a6813",
+      "localHttpProfileRequestsForThreeSelections": 3
+    },
+    "overhaul1": {
+      "sha256": "ce837ffea67d83416989e8ea37f38ce27676d7f00d109b0081580aeb5f702e21",
+      "localHttpProfileRequestsForThreeSelections": 3,
+      "synthetic40RowNsPerCall": [
+        465.775206,
+        316.31923,
+        600.858146
+      ],
+      "medianSynthetic40RowNsPerCall": 465.775206
+    },
+    "overhaul2": {
+      "sha256": "6022539b92134ccc5c9d4753b670f279de55971ceff5684f789b6c7b0230a73b",
+      "localHttpProfileRequestsForThreeSelections": 1,
+      "synthetic40RowNsPerCall": [
+        769.425706,
+        658.568584,
+        517.031094
+      ],
+      "medianSynthetic40RowNsPerCall": 658.568584
+    }
+  }
+}

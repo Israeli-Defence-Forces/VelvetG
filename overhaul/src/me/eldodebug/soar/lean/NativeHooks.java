@@ -28,6 +28,23 @@ public final class NativeHooks {
   private static String lastHost = "";
   private static volatile boolean onPika;
 
+  public static boolean editing() {
+    ScoutMod m = ScoutMod.getInstance();
+    return m != null && m.isEditing();
+  }
+
+  public static boolean previewTab() {
+    ScoutMod m = ScoutMod.getInstance();
+    return m != null && m.renderTab();
+  }
+
+  public static boolean tagPhase(ScoutState.Phase phase) {
+    return LeanSettings.on(
+        phase == ScoutState.Phase.ACTIVE
+            ? "nametagGame"
+            : phase == ScoutState.Phase.WAITING ? "nametagWaiting" : "nametagElsewhere");
+  }
+
   public static void tick() {
     ave mc = ave.A();
     if (mc == null) return;
@@ -39,6 +56,7 @@ public final class NativeHooks {
       lastHost = h;
       onPika = KeyVault.pika(h);
       ProfileExtras.clear();
+      RowLifecycle.clear();
       nametags = Collections.emptyMap();
       if (c != null) {
         try {
@@ -60,17 +78,19 @@ public final class NativeHooks {
     if (LeanSettings.on("nametag") && System.nanoTime() - snapshot > 250000000L) {
       snapshot = System.nanoTime();
       ScoutMod mod = ScoutMod.getInstance();
-      if (mod != null && mod.isToggled()) {
+      if (mod != null && mod.isToggled() && tagPhase(ScoutState.currentPhase())) {
         Map<String, String> m = new HashMap<>();
         String stat = LeanSettings.get("nametagStat");
         if (Arrays.asList("FKDR", "WLR", "HWS", "LV", "FK", "WINS", "BEDS").contains(stat))
           for (ScoutRow r : mod.currentRows())
-            if (r.stats != null && r.stats.status == ScoutStats.Status.OK)
+            if (r.stats != null
+                && r.stats.status == ScoutStats.Status.OK
+                && (!r.spectator || LeanSettings.on("nametagSpectators")))
               m.put(
                   r.name,
                   "§7" + (stat.equals("HWS") ? "BEST WS" : stat) + " " + r.stats.text(stat));
         nametags = Collections.unmodifiableMap(m);
-      }
+      } else nametags = Collections.emptyMap();
     }
   }
 
@@ -100,7 +120,10 @@ public final class NativeHooks {
   }
 
   public static String tag(Object entity) {
-    if (!LeanSettings.on("nametag") || !onPika || !(entity instanceof wn)) return null;
+    if (!LeanSettings.on("nametag")
+        || !onPika
+        || !tagPhase(ScoutState.currentPhase())
+        || !(entity instanceof wn)) return null;
     return nametags.get(((wn) entity).e_());
   }
 
@@ -125,6 +148,7 @@ public final class NativeHooks {
 
   public static void frame() {
     FrameProbe.frame();
+    TableEffects.nextFrame();
     AsyncImages.frame();
     if (LeanSettings.on("tabPersistent")) {
       ave mc = ave.A();

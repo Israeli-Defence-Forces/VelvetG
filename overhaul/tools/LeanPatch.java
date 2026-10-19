@@ -664,6 +664,7 @@ public final class LeanPatch extends BytecodeIO {
     b.add(next);
     m.instructions.insert(b);
     put(c);
+    StageTwo.apply();
     try (ZipOutputStream out =
         new ZipOutputStream(
             Files.newOutputStream(
