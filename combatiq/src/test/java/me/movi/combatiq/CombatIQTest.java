@@ -269,7 +269,7 @@ public final class CombatIQTest {
         Path path = dir.resolve("trace.csv");
         Session session = new Session(path, 32);
         session.main.offer(0, UNKNOWN_SOURCE_TIME, 1, 0, CONTEXT, SAMPLE, 0, 0,
-                FOCUSED | IN_WORLD | GAMEPLAY, 0, 0, 0);
+                FOCUSED | IN_WORLD | GAMEPLAY | BINDING_DOWN, 0, 0, 0);
         session.main.offer(10, UNKNOWN_SOURCE_TIME, 1, 0, FORWARD_EDGE, INPUT_QUEUE, 0, 0, 0, 0, 0, 0);
         session.main.offer(20, UNKNOWN_SOURCE_TIME, 1, 0, FORWARD_EDGE, INPUT_QUEUE, 0, 0, DOWN, 0, 0, 0);
         session.stop(); session.awaitStopped(5000);
