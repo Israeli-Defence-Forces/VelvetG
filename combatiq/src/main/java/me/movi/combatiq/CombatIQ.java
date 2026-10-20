@@ -136,6 +136,9 @@ public final class CombatIQ {
             releaseOpen = false; rawKnown = false;
         }
 
+        /** Close a recording boundary without inventing a matching press. Idempotent. */
+        public void finish() { censor(); }
+
         public void invalidate() {
             complete = false; censor(); writtenSprintKnown = false;
         }
@@ -253,10 +256,12 @@ public final class CombatIQ {
                 || !HEADER.equals(reader.readLine())) throw new IOException("Unsupported telemetry schema");
         Analyzer a = new Analyzer(trustServerTruth);
         Event e = new Event();
-        String line; boolean ended = false;
+        String line; boolean ended = false, lossSeen = false;
         while ((line = reader.readLine()) != null) {
             if (line.length() > 2048) throw new IOException("Oversized telemetry row");
             if (line.startsWith("# LOSS,")) {
+                if (lossSeen) throw new IOException("Repeated loss trailer");
+                lossSeen = true;
                 String[] f = line.split(",", -1);
                 if (f.length != 5) throw new IOException("Malformed loss trailer");
                 try {
@@ -269,6 +274,7 @@ public final class CombatIQ {
                 continue;
             }
             if ("# END".equals(line)) { ended = true; break; }
+            if (lossSeen) throw new IOException("Event after loss trailer");
             if (line.startsWith("#")) throw new IOException("Unknown telemetry control row");
             String[] f = line.split(",", -1);
             if (f.length != 14) throw new IOException("Malformed telemetry row");
@@ -282,11 +288,17 @@ public final class CombatIQ {
                 e.y = Double.parseDouble(f[12]); e.z = Double.parseDouble(f[13]);
                 if (!Double.isFinite(e.x) || !Double.isFinite(e.y) || !Double.isFinite(e.z))
                     throw new NumberFormatException("non-finite payload");
+                if (e.producer < MAIN || e.producer > SERVER || e.sequence <= 0
+                        || e.type < CONTEXT || e.type > CORRECTION
+                        || e.stage < INPUT_QUEUE || e.stage > GROUND_TRUTH
+                        || e.flags < 0 || (e.flags & ~127) != 0)
+                    throw new NumberFormatException("unknown event identifier");
             } catch (NumberFormatException ex) { throw new IOException("Invalid telemetry value", ex); }
             a.accept(e);
         }
-        if (!ended) a.invalidate();
+        if (!ended || !lossSeen) a.invalidate();
         else if (reader.readLine() != null) throw new IOException("Data after END");
+        a.finish();
         return a.snapshot();
     }
 
@@ -339,6 +351,7 @@ public final class CombatIQ {
                 }
                 if (main.dropped() + network.dropped() + main.misuse() + network.misuse() > 0)
                     analyzer.invalidate();
+                analyzer.finish();
                 out.write("# LOSS," + main.dropped() + "," + network.dropped() + ","
                         + main.misuse() + "," + network.misuse() + "\n# END\n");
                 snapshot = analyzer.snapshot();
