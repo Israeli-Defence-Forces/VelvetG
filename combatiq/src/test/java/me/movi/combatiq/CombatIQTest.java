@@ -20,7 +20,7 @@ public final class CombatIQTest {
     }
     private static Analyzer active() {
         Analyzer a = new Analyzer();
-        a.accept(e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY));
+        a.accept(e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY | BINDING_DOWN));
         return a;
     }
     private static void sampling() {
@@ -57,6 +57,46 @@ public final class CombatIQTest {
         a.accept(e(20, 3, FORWARD_EDGE, INPUT_QUEUE, DOWN));
         check(a.snapshot().unsampledReleases == 0, "synthetic release not scored");
     }
+    private static void phase3Checks() {
+        Analyzer a = new Analyzer();
+        a.accept(e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY));
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(20, 3, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().unsampledReleases == 0,
+                "initial unknown W state cannot count an intentional release");
+
+        a = active();
+        a.accept(e(500, 2, FRAME, SAMPLE, 0));
+        Event old = e(400, 1, HURT, RECEIVE, 0);
+        old.producer = INBOUND;
+        a.accept(old);
+        check(a.snapshot().observationNs == 500,
+                "cross-producer display watermark does not regress");
+        check(a.snapshot().complete, "cross-producer ordering is not a gap");
+
+        Event invalid = e(1000, 1, HURT, INTENT, 0);
+        check(!validEvent(invalid), "impossible stage rejected");
+        Event acceptable = e(1001, 1, ATTACK, INTENT, 0);
+        check(validEvent(acceptable), "normal attack intent permitted");
+        Event received = e(1002, 1, HURT, RECEIVE, 0);
+        received.producer = INBOUND;
+        check(validEvent(received), "dedicated inbound lane accepted");
+
+        String log = "# CombatIQ schema=2\\n" + HEADER + "\\n";
+        StringWriter w = new StringWriter();
+        try {
+            w.write(log);
+            Event context = e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY | BINDING_DOWN);
+            writeEvent(w, context);
+            writeEvent(w, invalid);
+            w.write("# LOSS,0,0,0,0,0,0\\n# END\\n");
+            boolean refused = false;
+            try { replay(new StringReader(w.toString()), false); }
+            catch (IOException ex) { refused = true; }
+            check(refused, "schema2 replay refuses invalid producer-stage combination");
+        } catch (IOException ex) { throw new AssertionError(ex); }
+    }
+
     private static void boundaries() {
         Analyzer a = active();
         a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
@@ -67,7 +107,7 @@ public final class CombatIQTest {
 
         a = active();
         a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
-        Event boundary = e(15, 3, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY);
+        Event boundary = e(15, 3, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY | BINDING_DOWN);
         boundary.session = 2; a.accept(boundary);
         Event press = e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN); press.session = 2;
         a.accept(press);
@@ -101,10 +141,10 @@ public final class CombatIQTest {
         check(s.writtenSprintKnown && !s.writtenSprint, "written sprint separately retained");
         a.accept(e(2, 3, ATTACK, INTENT, 0));
         n = e(2, 2, ATTACK, WRITE, 0); n.producer = NETWORK; a.accept(n);
-        n = e(3, 3, HURT, RECEIVE, 0); n.producer = NETWORK; a.accept(n);
+        n = e(3, 1, HURT, RECEIVE, 0); n.producer = INBOUND; a.accept(n);
         a.accept(e(4, 4, HURT, APPLY, 0));
-        n = e(4, 4, VELOCITY, RECEIVE, 0); n.producer = NETWORK; a.accept(n);
-        n = e(5, 5, USE_START, WRITE, 0); n.producer = NETWORK; a.accept(n);
+        n = e(4, 2, VELOCITY, RECEIVE, 0); n.producer = INBOUND; a.accept(n);
+        n = e(5, 3, USE_START, WRITE, 0); n.producer = NETWORK; a.accept(n);
         s = a.snapshot();
         check(s.attackIntents == 1 && s.attackWrites == 1, "intent and write counted separately");
         check(s.hurtReceives == 1 && s.hurtApplies == 1, "receive and apply separated");
@@ -188,7 +228,7 @@ public final class CombatIQTest {
         w.write("# LOSS,0,0,0,0\n# END\n"); return w.toString();
     }
     private static void replayTests() throws Exception {
-        Event context = e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY);
+        Event context = e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY | BINDING_DOWN);
         Event release = e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0);
         Event press = e(20, 3, FORWARD_EDGE, INPUT_QUEUE, DOWN);
         String text = log(context, release, press);
@@ -248,7 +288,7 @@ public final class CombatIQTest {
         Files.delete(path); Files.delete(dir);
     }
     public static void main(String[] args) throws Exception {
-        sampling(); boundaries(); stages(); rings(); replayTests(); async();
+        sampling(); boundaries(); stages(); rings(); replayTests(); async(); phase3Checks();
         System.out.println("PASS: " + assertions + " assertions; Java " + System.getProperty("java.version"));
         System.out.println("Scope: telemetry kernel, concurrency, replay and file lifecycle. No game/FPS validation.");
     }
