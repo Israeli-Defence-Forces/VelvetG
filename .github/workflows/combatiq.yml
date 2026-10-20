@@ -2,10 +2,10 @@ name: CombatIQ standalone kernel
 on:
   push:
     branches: ['combatiq/passive-analyzer']
-    paths: ['combatiq/**', '.github/workflows/combatiq.yml']
+    paths: ['combatiq/src/**', 'combatiq/build.py', 'combatiq/experiments/**', '.github/workflows/combatiq.yml']
   pull_request:
     branches: ['lean/overhaul3']
-    paths: ['combatiq/**', '.github/workflows/combatiq.yml']
+    paths: ['combatiq/src/**', 'combatiq/build.py', 'combatiq/experiments/**', '.github/workflows/combatiq.yml']
 permissions:
   contents: read
 jobs:
