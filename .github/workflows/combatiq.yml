@@ -1,7 +1,7 @@
 name: CombatIQ standalone kernel
 on:
   push:
-    branches: ['combatiq/passive-analyzer']
+    branches: ['combatiq/passive-analyzer', 'combatiq/phase3-native-integration']
     paths: ['combatiq/src/**', 'combatiq/build.py', 'combatiq/experiments/**', '.github/workflows/combatiq.yml']
   pull_request:
     branches: ['lean/overhaul3']
