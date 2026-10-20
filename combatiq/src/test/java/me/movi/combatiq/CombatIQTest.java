@@ -209,6 +209,20 @@ public final class CombatIQTest {
         bad = false;
         try { replay(new StringReader(huge), false); } catch (IOException ex) { bad = true; }
         check(bad, "invalid timestamp refused");
+        check(!replay(new StringReader(text.replace("# LOSS,0,0,0,0\n", "")), false).complete,
+                "missing loss trailer cannot masquerade as complete");
+        bad = false;
+        try { replay(new StringReader(text.replace("# END", "# LOSS,0,0,0,0\n# END")), false); }
+        catch (IOException ex) { bad = true; }
+        check(bad, "duplicate loss trailer refused");
+        bad = false;
+        StringWriter extra = new StringWriter(); writeEvent(extra, press);
+        try { replay(new StringReader(text.replace("# END", extra.toString() + "# END")), false); }
+        catch (IOException ex) { bad = true; }
+        check(bad, "events after loss trailer refused");
+        Snapshot pending = replay(new StringReader(log(context, release)), false);
+        check(pending.complete && pending.censoredReleases == 1 && pending.unsampledReleases == 0,
+                "unfinished release is censored at recording end");
     }
     private static void async() throws Exception {
         Path dir = Files.createTempDirectory("combatiq-test-");
