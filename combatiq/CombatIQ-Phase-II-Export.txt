@@ -1,0 +1,1381 @@
+VELVETG COMBATIQ — PHASE II STOPPED-WORK EXPORT
+Date: 20 October 2026
+This export was made immediately after the user requested a stop. No further research, implementation, or tests were undertaken for this export.
+
+STATUS AND NAVIGATION
+This file contains the completed research drafts, additional integration/experiment notes gathered before the stop, all newly written prototype source/build/test files, and the verification boundary.
+
+Repository branch:
+https://github.com/Israeli-Defence-Forces/VelvetG/tree/combatiq/passive-analyzer
+
+Latest observed completed successful CI run for the executable changes:
+https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39460312267
+Executable-change commit: bac7541ad78deebb9c09fc7bc4bfe85f6ba79277
+Matrix: Java 8, 17 and 21. Standalone Java 8-compatible telemetry/replay kernel and Python protocol tests.
+Earlier Java 8 job log explicitly reported PASS: 49 assertions before the four additional replay-boundary checks were added. The later run above was observed completed successfully. No Minecraft, Windows, FPS, server-ground-truth or comparative PvP tests have been run.
+
+The branch currently includes REPORT.md, LUNAR.md, the Java source/tests, build.py, protocol.py, and the workflow. INTEGRATION.md, EXPERIMENTS.md and VALIDATION.md mentioned as companion documents in the research draft had NOT yet been created at the stop. Relevant working notes are included below instead. No pull request was opened, no branch was merged and no game client JAR was produced.
+
+This is a self-contained telemetry kernel and offline replay tool, NOT an installable Forge mod. Its event APIs are tested; actual Minecraft adapters and HUD drawing are not implemented. All events in tests are synthetic. No claim of improved PvP outcomes is supported yet.
+
+PRIOR REPORTS
+Both supplied prior reports were read completely:
+- Pasted text (2)(1).txt: 1,091 lines, 52,714 bytes.
+- Pasted text (4).txt: 962 lines, 43,346 bytes.
+They are identified as R1 and R2 below. Their original text is not duplicated in this export; the audit records the new findings and corrections. Third-party Minecraft source is referenced, not redistributed.
+
+PART 1 — COMPLETED RESEARCH REPORT DRAFT
+
+# VelvetG CombatIQ — Phase II evidence audit and algorithm specification
+Research cut-off: 20 October 2026. Status: source inspection plus tested standalone telemetry software; no Minecraft launch or comparative PvP experiment.
+
+## Reading and evidence scope (Deliverable A)
+Both supplied reports were read completely: **R1**, “Pasted text (2)(1).txt” (1,091 lines, ordered-event reconstruction); **R2**, “Pasted text (4).txt” (962 lines, PULSE/SHIFT/SPAR/TICK-LENS). Their conclusions are not experimental results. Neither supplied an instrumented gameplay dataset demonstrating superiority.
+
+Labels used here:
+- **Code fact:** follows from the particular inspected implementation, subject to forks/modifications.
+- **Documented:** a project describes its product this way; this does not reveal private implementation.
+- **Inference:** a consequence of stated assumptions, requiring trace verification.
+- **Hypothesis:** an untested improvement or causal explanation.
+- **Tested:** only an experiment actually executed and linked in VALIDATION.md.
+
+The baseline source is the publicly accessible MCP 1.8.9 mirror at [commit 6bc307e](https://github.com/Marcelektro/MavenMCP-1.8.9/tree/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft). This is a community decompilation, not an official Mojang source release, and is not proof of the binaries on PikaNetwork, MMC, or VelvetG. No Minecraft source/classes are redistributed here. Source locations below are method names; the pinned links provide exact inspected files.
+
+The supplied VelvetG repository is a different constraint from a normal Forge source checkout. [lean/overhaul3 at aedd37f](https://github.com/Israeli-Defence-Forces/VelvetG/tree/aedd37f4e979c4c6233aa02d0c560f668ffcdafb) uses an exact-baseline binary patcher, plus public Java/ASM tools. The original client JAR and game/dependency JARs are absent. Therefore this change supplies a separately executable Java 8 kernel and a concrete integration plan, without claiming a rebuilt or instrumented client.
+
+### Audit of earlier claims
+| Earlier claim / proposal | Audit | Consequence |
+|---|---|---|
+| R1: local attack effects can disagree with server acceptance | Correct; PlayerControllerMP.attackEntity sends C02 before local attack; EntityOtherPlayerMP.attackEntityFrom returns true. Retained, not claimed as new. | Separate intent, write, damage feedback, private-server acceptance. |
+| R1/R2: immunity has a stronger-damage exception | Correct but incomplete for feedback attribution. The stronger branch skips fresh hurt status/base knockback while the enclosing attack can still succeed. | Missing red flash is not evidence of rejection; see finding 9. |
+| R2 §3: “raw input timestamp” directly measurable at a hook | Overspecified. A Java hook measures queue drain, binding mutation, or sampling; it does not measure USB switch closure. An OS/LWJGL timestamp is another clock domain. | Rename measurements by stage; do not publish physical input latency from nanoTime alone. |
+| R2 §7: nominal 20 Hz means no reason for inference at 120 Hz | Too broad. Event capture must follow actual input/Netty callbacks, including between ticks. Periodic expensive model refresh may remain slow. | Event-driven capture; worker snapshots at 10 Hz; rendering does not run inference. |
+| R2 PULSE hypotheses include uncertain sprint/attack ordering | Where a single connection's outbound order is observed, alternative permutations contradicting that order should receive zero weight under vanilla serial handlers. Acceptance and state changes between packets remain uncertain. | Condition on observed order before adding probability. |
+| R2 PULSE posterior equations constitute a usable model | They are a framework, not a fully specified filter: transition, emission, acceptance likelihoods, priors, and calibration are missing. | Do not implement the illustrative percentages as probabilities. |
+| R1/R2: incoming packet rhythms may estimate server phase | Plausible only with a specified emission model. Received phase includes server flush, network delay and client scheduling; these are not identifiable separately from ordinary traffic. | TICK-LENS is a private-server falsification experiment, not a production clock. |
+| R2 SPAR: regress knockback against subsequent positions | Missing the player velocity-send/restore path and victim-controlled movement reports. | Separate server motion, S12 payload, client application and next movement report. |
+| R1 ordered reconstruction is the strongest starting point | Supported as an engineering priority, not as a proven combat advantage. | Implement deterministic observable diagnostics before a probabilistic planner. |
+| Both: Lunar has useful timing feedback | Supported, but configuration/API and marketing are not scorer source. | Detailed evidence boundary in LUNAR.md; no invented stock W-tap module. |
+| Both: fixed timing is an inadequate ultimate objective | Reasonable research motivation, not a result. A tuned fixed window may beat an overfit adaptive one. | Compare against separately optimized fixed and simple event-based baselines. |
+
+## Ranked findings and falsifiable interactions (Deliverables B/C)
+Rank reflects likely diagnostic value and testability, not measured PvP effect. “New” means absent or inadequately developed in the supplied reports, not worldwide novelty.
+
+Source keys:
+- [MC: Minecraft.runTick/runGameLoop/setIngameNotInFocus](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/client/Minecraft.java)
+- [SP: EntityPlayerSP.onLivingUpdate/onUpdateWalkingPlayer](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/client/entity/EntityPlayerSP.java)
+- [EP: EntityPlayer.attackTargetEntityWithCurrentItem/damageEntity](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/entity/player/EntityPlayer.java)
+- [LB: EntityLivingBase.attackEntityFrom/knockBack/moveEntityWithHeading/jump/handleStatusUpdate](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/entity/EntityLivingBase.java)
+- [PT: PacketThreadUtil.checkThreadAndEnqueue](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/network/PacketThreadUtil.java)
+- [NS: NetHandlerPlayServer.processUseEntity/processEntityAction](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/network/NetHandlerPlayServer.java)
+- [MI: MovementInputFromOptions.updatePlayerMoveState](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/util/MovementInputFromOptions.java)
+- [KB: KeyBinding.setKeyBindState/onTick/isPressed/unPressAllKeys](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/client/settings/KeyBinding.java)
+
+| Rank | Finding and evidence | Implication / disproof experiment |
+|---|---|---|
+| 1 | **Attack processing precedes this tick's player movement consumption in this vanilla loop** (MC runTick: attack loops, then world.updateEntities; SP onUpdate → super update → onUpdateWalkingPlayer). New code-level interaction. | A W-up binding change in the same tick need not update sprint before that tick's attack. Log actual attack entry, consumption and C0B/C02 order. Falsified for VelvetG if its hooks reorder these stages. |
+| 2 | **Unblocking can discard queued attacks for that branch**: MC tests isUsingItem, may stop using, then drains attack press counts without calling clickMouse; the else is not re-entered after stopping. New code fact. | Some “late block-hit” failures can be no C02 generated, independent of ping. Controlled release-use plus attack in one tick should reproduce; a client fix may remove it. |
+| 3 | **Separate device queues and action batching lose physical alternation**: MC drains Mouse.next before Keyboard.next, then later consumes attack presses before use-item presses. New. This does NOT mean the mouse attack callback necessarily runs before keyboard drain. | L/R/L host chronology may become several attacks followed by use, depending on current-use branch. Replay actual hook order; compare idle and stalled frames. |
+| 4 | **Several simulation ticks may occur almost together after a stall**: MC runGameLoop loops Timer.elapsedTicks; [Timer.updateTimer](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/util/Timer.java) caps catch-up at 10. New. | Tick gap × 50 ms is not wall elapsed time, and samples are not regularly spaced after stalls. Inject 100/250 ms stalls privately and measure both domains. |
+| 5 | **A brief up/down interval may leave no consumed up state** (MC queue drains, KB final state, MI sampling). Earlier “input timing” descriptions did not specify this test. | Diagnose unsampled release, not “bad network W-tap.” Sweep release width and phase; disprove if every observed interval contains a real binding-up sample under the target client. |
+| 6 | **W binding, effective forward movement, and sprint are three different states**: MI combines forward/back and sneak; SP applies item-use scaling and a sprint threshold. New aliasing analysis. | forward=0 can mean W+S; use/sneak can reduce movement without W-up. Record binding separately from consumed floats and synthetic module changes. |
+| 7 | **Focus/GUI transitions are censoring boundaries**: MC focus loss invokes KB.unPressAllKeys, resetting state without a physical key-up. New. | Never score this as a manual tap. Tests alt-tab, chat, GUI and rebind with an open interval; any “miss” produced falsifies the classifier. |
+| 8 | **Ray selection has its own age**: MC runTick refreshes getMouseOver(1.0F) before device drains; [EntityRenderer.getMouseOver](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/client/renderer/EntityRenderer.java) also handles render-time selection. New ordering detail. | It is wrong to assume only last rendered frame's ray, or to assume attack-time geometry equals later movement. Log ray build, chosen entity and attack generation separately; test multiple queued clicks. |
+| 9 | **Accepted stronger damage may lack fresh hurt status/base KB** (LB attackEntityFrom). Strengthened earlier immunity finding, not newly discovered immunity. | Bayesian hit attribution needs a “successful without fresh status” likelihood. Private unequal-damage tests measure false negatives of red-flash-only trainers. |
+| 10 | **Player knockback is not simply persistent server motion**: EP captures old victim motion, can send S12 for a player, clears velocityChanged and restores old motion. New. | Fit packet impulse → victim application → reported movement; do not fit one immediate server vector as the full physical trajectory. Disable victim movement or use a nonplayer control to expose the difference. |
+| 11 | **An APPLY hook before thread handoff can double count** (PT re-enters the handler on main thread). New instrumentation consequence, although R1 mentioned thread scheduling. | RECEIVE belongs at channel ingress; APPLY belongs after the thread check. Verify one receive/one application correlation, including main-thread stalls. |
+| 12 | **No extra server tick is required between C0B and C02** (NS serial state setters and attack handler). New precise ordering test. | Same-tick start→attack and attack→start differ; nominal tick equality is insufficient. Record within-tick ordinal, sprint at damage call and post-attack state. |
+| 13 | **Local fake acceptance can consume sprint during a batch of clicks** ([PlayerControllerMP.attackEntity](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/client/multiplayer/PlayerControllerMP.java), EP; [EntityOtherPlayerMP.attackEntityFrom](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/client/entity/EntityOtherPlayerMP.java)). New interaction of previously known facts. | First and later C02 in a client tick can have different local state while server immunity rejects some. Test 1 versus several queued clicks; avoid teaching every animation as a fresh reset. |
+| 14 | **Player immunity timer has a separate decrement path**: [EntityPlayerMP.onUpdate](https://github.com/Marcelektro/MavenMCP-1.8.9/blob/6bc307e9f937728886d3859987c0d3b441d14557/src/main/java/net/minecraft/entity/player/EntityPlayerMP.java); LB excludes MP from its ordinary decrement. New simulator hazard. | A simplistic test simulator can decrement twice and “discover” nonexistent hit windows. Assert one decrement per authoritative update. |
+| 15 | **Nearby packet delay covariance can dominate RTT jitter** (mathematical inference, not game-code finding). Var(D_i−D_j)=Var(D_i)+Var(D_j)−2Cov(D_i,D_j). | Shared queue delay cancels from gaps; independent half-ping sampling exaggerates uncertainty and may invent reordering. Compare equal-RTT independent/bursty traces with matched marginal variance. |
+| 16 | **Block mitigation and immunity compare different damage quantities**: EP damageEntity applies (1+d)/2 for eligible blocking after LB's incoming-damage gate. New interaction. | Blocking is not exactly 50% health reduction and does not simply shorten immunity. Log incoming amount, lastDamage, damage-call argument and final health/absorption separately. |
+| 17 | **Missing telemetry is not negative evidence** (engineering hypothesis implemented conservatively). Sequence gaps, tail overflow and unclosed files can erase the very sample that distinguishes a successful release. | Loss must suspend verdicts, including losses after the final surviving event. Force overflow/truncation and require explicit incompleteness. |
+
+These findings are mechanisms and predicted trace signatures, not demonstrated improvements. Findings 1–8 and 10–17 supply the requested additional investigations beyond the reports. Findings 9 and 13 deliberately acknowledge their overlap.
+
+## Mechanistic model and limits
+This section supplements rather than repeats the reports' basic combat descriptions.
+
+### Sprint, attacks and blocking
+Let S_j be server sprint immediately before ordered packet/event j, I_j the predicate that the target's attackEntityFrom returns true, and K the held weapon's knockback enchantment contribution. Vanilla's extra impulse multiplier is i=K+1[S_j]. On an accepted attack with i>0, extra target velocity is 0.5i(-sin yaw, cos yaw), target vertical addition is 0.1, attacker horizontal motion is multiplied by 0.6, and attacker sprint is cleared. With i=0 that particular slowdown/reset branch is not entered. Server rejection does not execute it. Local prediction can disagree.
+
+C0B start sets S=1, stop sets S=0; accepted attacks can clear S independently of a stop packet. The client's field named serverSprintState remembers what it last tried to announce; it is not an acknowledgement. Therefore a missing explicit STOP does not prove a failed reset, nor does a START prove the server was sprinting at a later attack. Server inference must include accepted attacks and other server changes.
+
+“Zest tapping” is a community technique label, not a distinct vanilla mechanic or packet. Its operational definition must be the actual forward release/repress, sprint and attack sequence shown by the player. Test short versus longer release and spacing patterns under that definition; do not invent a special Zest reset threshold.
+
+Block use affects at least four mechanisms: effective forward input, sprint eligibility, attack generation while using, and damage mitigation. Record C08 use intent/writes and C07 RELEASE_USE_ITEM separately from animation and actual item-use state. A sword-block animation pack cannot establish authoritative blocking. The server can accept or reject interactions differently.
+
+Vanilla 1.8.9 has no 1.9 attack-strength recharge. That does not make every click damaging. Input suppression, client selection, server range validation, target immunity, game mode, plugins and cancellations all intervene. NS uses a broad squared entity-distance guard of 36 when visible and 9 otherwise; this is not a “6-block legitimate reach” recommendation, nor the client's ray criterion, nor an anti-cheat rule.
+
+### Damage, trades and knockback
+For an ordinary living target, let h be hurtResistantTime, H its maximum, L lastDamage, and a incoming damage before the later mitigation stages. Subject to early rejection checks:
+- h>H/2 and a<=L: reject.
+- h>H/2 and a>L: pass a−L into damageEntity, replace L, skip the fresh status/base-KB branch.
+- h<=H/2: set h=H, pass a, set hurt animation, run fresh-hit path.
+
+This is a stateful gate, not a universally fixed 500 ms click cooldown. H and tick duration can change; stronger hits, server plugins, zero final health loss and mitigation complicate labels. Each victim has its own gate, so reciprocal trades are not forbidden by a shared combat cooldown. Hit-selecting can change relative geometry, momentum and who enters the other's gate; taking a hit does not create a special offensive permission to hit through the opponent's immunity.
+
+For base knockback (ordinary nonzero separation, resistance check passed), horizontal victim motion becomes
+v_h^+=0.5 v_h^- +0.4 n_away;
+v_y^+=min(0.5 v_y^-+0.4,0.4).
+Add the extra attack impulse above when its branch executes. Direction from relative position and extra direction from attacker's yaw need not agree. A sprint jump adds about 0.2 along facing while replacing vertical jump velocity; its relation to an applied velocity packet is ordered, not commutative. A packet arriving before versus after the jump can produce different outcomes. This is a testable interaction, not proof that any “perfect” display minimizes KB.
+
+Between impulses, a limited free-motion approximation is
+v_{h,k+1}=f_k(v_{h,k}+a_k), p_{k+1}=p_k+v_k,
+v_{y,k+1}=0.98(v_{y,k}−0.08),
+with collision resolution, acceleration, jump and packet application in their actual code order. Vanilla's ordinary horizontal drag factor uses approximately 0.91 airborne and 0.91×ground slipperiness on ground; acceleration also depends on ground/slipperiness and input. These equations are not valid for water, ladders, collisions, flying, nonvanilla velocity handling, or as a substitute for the exact update order.
+
+PikaNetwork and MMC backend KB constants, acceptance rules, proxy scheduling and server TPS are unverified. [PandaSpigot's configurable-knockback patch](https://github.com/hpfxd/PandaSpigot/blob/master/patches/server/0014-Configurable-knockback.patch), inspected here, demonstrates modifiable friction/impulse behavior in a real compatible fork; it does not identify either public server's implementation.
+
+### What can be observed
+| Quantity | Public-client status |
+|---|---|
+| Hook entry nanoTime, client tick index, binding and movement values at that hook | Measured at that stage, with hook/scheduling error |
+| LWJGL event timestamp | Source timestamp with separately established clock origin/resolution; not a physical switch timestamp |
+| C02/C0B logical send call | Measured intent; may be queued/cancelled/replaced |
+| Netty outbound handler order | Measured traversal at that chosen pipeline point; not NIC transmission/remote acceptance |
+| S12/status arrival and main-thread application | Separately measured; status does not identify attacker |
+| Own local sprint versus last observed outbound sprint transition | Separate observations; neither acknowledges server state |
+| Remote encoded coordinates, interpolation target and rendered pose | Three distinct client quantities; future authoritative position hidden |
+| RTT from ordinary server/tab mechanisms | Sampled and possibly smoothed/application-delayed; not exact current path delay |
+| One-way delays, precise server phase, opponent input/RTT, private KB/anti-cheat rules | Unidentified without additional assumptions/instrumentation |
+| USB switch time, monitor photon time | Require external instrumentation; a Java timestamp cannot recover them |
+
+Let c be client clock, s=c+theta the server clock, D_up one-way upload delay, and E scheduled server emission time. A received timestamp has form r=E−theta+D_down+client_queue. Replacing theta by theta+epsilon and D_down by D_down+epsilon preserves r. Ordinary arrivals alone cannot separate these values. Similarly an RTT observation constrains D_up+D_down+processing, not each term; dividing RTT by two adds an assumption. See [RFC 7679 §3.7](https://www.rfc-editor.org/rfc/rfc7679.html) on one-way timing/synchronization uncertainty.
+
+An attack's processing time in client-clock coordinates is
+T_i=c_i^write+D_i^up+Q_i^server.
+A “round to next tick” map is only one queue model. Real handler tasks can run within the same server tick in order, and a modded task drain can differ. Tick identity and within-tick ordinal must both be logged. TCP preserves byte order on one connection; it does not preserve user action order across clients, avoid head-of-line stalls, or guarantee particular flush timing.
+
+With symmetric paths as an explicitly hypothetical example, a display at 300 ms RTT may reflect approximately 150 ms of download age before local queue/render delay, while your next action still faces upload and processing. These are not measurements of your actual one-way paths. Opponent packet age adds further uncertainty. No confidence interval narrower than its unmodeled delay error becomes justified because the estimator uses nanosecond arithmetic.
+
+Human feedback has another delay L_human+L_display+L_capture. If the remaining target interval ends sooner than that combined distribution, an immediate “tap now” cue cannot reliably affect the event it describes. Prefer post-exchange feedback and advance rhythm practice. Measure each player's cue-response distribution privately rather than assigning a universal 200 ms reaction constant.
+
+## Algorithm comparison (Deliverable D)
+Ranks are engineering priorities conditional on missing real data, not an empirical leaderboard. “New” below describes combinations/applications; state machines, Bayesian inference, system identification and abstention are established methods.
+
+| Rank | Candidate | Cost / state | At 180–300 ms and failure condition | Falsification |
+|---|---|---|---|---|
+| 1 | **Execution-aware ordered analyzer**, then small SHIFT calibration | O(1)/event; bounded rings; later small context table | Detects observable client execution failures independently of RTT. Cannot decide optimal server timing. Loses confidence on gaps, focus or synthetic inputs. | Ground-truth binding samples disagree with classifier, or diagnostic coaching fails held-out randomized practice. |
+| 2 | **Execution-conditioned SHIFT**: learn a broad release/counterattack window only among clean executions | O(B) per worker update, small fixed B; no deep model | Can personalize frame/input effects. Needs randomized labels and enough comparable exchanges; opponent drift and selection bias can erase benefits. | Tuned fixed or event-only trainer matches/beats it on held-out conditions or harms spacing. |
+| 3 | **Relative-gap robust feasibility**: optimize a cue across a set of plausible delays/positions rather than guess phase | O(BM) small grid outside hot path | Shared delay can cancel for closely spaced own packets; remote attack/position uncertainty may leave no safe interval. Abstain. | At equal cue coverage, interval violations or outcomes fail to improve over simple intervals. |
+| 4 | **SPAR with innovation gating**: identify impulse response only on isolated, attributable trials | O(d²), low-dimensional regression; offline first | Potentially detects server-profile changes. Victim input, packet restore path and walls confound passive public observations. | Cannot distinguish hidden known private KB profiles on held-out moving trials; stop fitting. |
+| 5 | **PULSE hybrid Bayesian filter**, discrete acceptance/sprint modes plus bounded movement state | O(M) or more per observation; model-dependent | Can combine ambiguous evidence, but posterior confidence is meaningless with incorrect likelihoods. At 300 ms hidden opponent actions multiply. | Poor reliability/Brier score or no incremental outcome benefit after the simpler analyzer+SHIFT. |
+| 6 | **TICK-LENS** joint period/phase/delay reconstruction | Window scan/particles; worker only | Identifiability fails with unknown emission/queue delay. A precise estimate may only track packet flush rhythm. | Held-out server phase error no better than uniform/no-phase baseline or predicted intervals under-cover. |
+| 7 | HMM/sequence model and opponent-specific policy | Extra parameters, training/memory/identity lifecycle | Could learn recurring attack rhythms; sparse encounters, player adaptation and latency changes overfit. | Chronological leave-opponent-out evaluation beats neither fixed nor basic velocity/event model. Defer. |
+
+A Kalman filter is a possible smoothing tool, not authority recovery: teleports, collisions, quantization and velocity packets create discontinuities. Reset/update modes on these events; compare an alpha-beta filter and constant-velocity baseline before more complex models. “Low residual error” on interpolated positions is not future server hitbox accuracy.
+
+Novel hypotheses worth testing are (i) conditioning learning on execution completeness to avoid learning stall artifacts as network strategy; (ii) choosing by relative-delay robustness instead of exact tick phase; and (iii) censoring unattributed impulse transitions before SPAR. This search did not establish worldwide novelty or patent originality.
+
+## Strongest candidate: observable execution first, selective personalized windows second (Deliverable E)
+### Stage 0, implemented exact diagnostic
+Event e=(t, sourceTime, session, producer, sequence, correlation, type, stage, tick, entity, flags, x,y,z). All t values supplied to the kernel must use one process's nanoTime domain; sourceTime is opaque separate metadata. Never subtract client/server clocks without a fit.
+
+For an eligible queue-observed forward-up U_j and subsequent forward-down D_j in the same context, define
+M_j={movement-consumption samples m with U_j <= m < D_j and forward_binding(m)=UP}.
+Use actual MAIN producer sequence for interval membership; equal t values remain ordered. Define:
+- sampled release iff M_j is nonempty;
+- unsampled release iff M_j empty AND the interval and capture are complete;
+- censored otherwise.
+
+“Sampled” means a binding-up state was present at the movement-consumption observation, not that a sprint reset or advantageous hit occurred. MODIFIED_INPUT remains visible; a zero effective forward float alone is not evidence of W release. SYNTHETIC mutation/focus/connection/correction boundaries censor intervals. Incomplete captures suspend subsequent verdicts for the recording; this conservative implementation requires a new recording to recover.
+
+State: rawKnown/rawDown; releaseOpen/releaseSampled/releaseAt; localSprintKnown/localSprint; writtenSprintKnown/writtenSprint; per-producer previousSequence/previousNs; session/context; counters. Ground-truth acceptance is separate and disabled by default. On end-of-recording, an unclosed release is censored once.
+
+Pseudocode:
+    on gap, backward producer time or known loss: invalidate; censor pending interval
+    on context/session change: censor; unknown local/written sprint
+    on eligible nonsynthetic queue up: open interval
+    on movement SAMPLE with forward binding up: mark interval sampled
+    on eligible queue down: close as sampled/unsampled
+    on local sprint SAMPLE: update local observation
+    on Netty sprint WRITE: update last written observation
+    on ATTACK intent/write or HURT receive/apply: count distinct stages
+    on ordinary feedback: never increment confirmed-own-hit
+    on trusted private SERVER_ACCEPT: count explicit ground truth
+
+No public probability of hit success is emitted. The current confidence interface is complete/incomplete plus known/unknown states, not an uncalibrated percentage. A release seen in the host queue but missed by movement is a deterministic local result under complete hooks. It remains conditional on hook coverage.
+
+### Stage 1, fully specified research policy, not yet implemented or validated
+Use a deliberately small contextual table rather than full PULSE:
+- contexts: grounded/airborne × item-use/no-use × stable/variable local frame pacing; split server profile and session. Add movement direction or network categories only after an ablation supports them.
+- candidate release durations: an experimental grid such as {15,30,45,60,80,100,140} ms. These are assigned practice conditions, not recommended public-server delays.
+- hit-select candidates: offsets relative to a named observable incoming feedback/apply event, using a separately prespecified grid. Do not mix offsets from different anchors in one table.
+- record assigned cue a, actual execution, quality/censoring, and server-labeled endpoint. For causal estimates keep intention-to-treat assigned arms; never remove difficult executions from one arm after randomization. The “clean execution” model is a separate descriptive diagnostic, not a substituted causal comparison.
+
+For each independent randomized practice unit g, compute z_g,a = fraction of eligible attacks accepted with the server's sprint flag on at attack, with explicit eligibility fixed before treatment. Preserve damage/spacing safety endpoints separately. Units can be short sessions/blocks; attacks within a unit are correlated. Fit mean outcome mu_a(c), uncertainty by resampling paired units. For a simple isolated-trial Bernoulli sandbox only, Beta(1+s,1+n−s) is an optional smoothed descriptive estimate; it is not a valid independent-attack posterior for clustered human combat.
+
+Choose the set A_safe(c) whose lower confidence bound for improvement over the tuned fixed baseline exceeds a prespecified practical margin eta, whose upper bound on spacing/damage harm is below its margin, and whose independent-unit count meets a preregistered minimum. Merge adjacent duration bins only when all included bins satisfy the rule. If empty, recommend baseline or abstain. Choose the shortest safe interval only if the lower-bound advantage is maintained; otherwise report the broad set without an optimum point.
+
+Formally, for uncertain latent state/delay parameters u in an empirically calibrated set U_c and candidate cue a:
+V(a,c)=inf_{u in U_c} E[Y(a)|c,u] − lambda C_spacing(a,c,u).
+a*=argmax_{a in A_safe} V(a,c).
+Y and lambda must be fixed before evaluation; for the initial trial use the single sprint-at-accepted-attack endpoint and spacing as a noninferiority guard, avoiding arbitrary composite-score weights. U must include correlated delay differences and frame/sampling uncertainty; it must not be fitted as a zero-width phase from RTT/2. If intervals widen until rankings overlap, abstain. If there is no validated latent model, use the randomized table directly and do not compute V.
+
+Public observational play can update descriptive counts and flag distribution shift, not establish causal treatment benefit. A valid private policy is frozen before held-out testing; any online exploration/automated interventions remain in permitted private environments. Version every anchor, server profile, policy and feature schema.
+
+### Technique-specific state
+| Technique | Anchor and controllable variable | Required outcome distinction |
+|---|---|---|
+| W/Zest manual tapping | Observed attack generation plus forward release/repress; actual consumed samples | Unsampled input vs sampled state change vs C0B order vs server sprint at attack |
+| Block-hit | Actual use begin/end and attack-generation branches | No attack generated vs generated/rejected; defensive mitigation vs sprint/spacing cost |
+| Hit-select/midtrade | Named incoming receive/apply event and counterattack generation | Delayed cue vs actual server attack order; both victims' immunity; range and relative motion |
+| Combo maintenance | Sequence of accepted exchanges and relative position/velocity | Excess KB/separation can reduce next-hit probability; maximizing KB is not equivalent to winning |
+
+For a richer geometric model use relative state r=p_opponent−p_self, w=v_opponent−v_self. At uncertain horizon tau, r(t+tau)≈r+w*tau+0.5*a_rel*tau². Propagate a set or covariance only within one motion mode; collision/teleport/unknown input broadens it. Attack acceptance is an event through server code, not merely norm(r)<3.0. A favorable window is the set of cue times meeting both registration and spacing criteria with calibrated lower probability bounds. An empty window is a meaningful answer.
+
+Failure conditions: incomplete hooks, multiple producers using one ring, unknown synthetic edits, reconnect/entity reuse, untrusted labels, changed server code, phase/delay nonidentifiability, too few randomized units, policy distribution shift, or overhead above the frame-time budget. Stop cueing rather than invent a narrower interval.
+
+## Recommendation (Deliverables I/J)
+Integrate the passive execution analyzer first. Its most useful initial output is “your forward-up was never consumed” or “an attack was not generated while unblocking,” with an inspectable stage trace. Then test broad personalized windows against a genuinely tuned fixed strategy. At 180–300 ms, execution reliability, packet order and spacing are supportable training targets; exact hidden-server-tick cues are not yet supportable.
+
+VelvetG now has tested standalone machinery for censored input-sampling diagnostics, separate local/written sprint observations, stage-aware packet records, loss-aware replay and explicit unknown hit acceptance. Lunar's public configuration does not demonstrate these diagnostics, and the inspected open-source indicator does not implement them. That is a source-supported feature distinction, not proof Lunar lacks undisclosed internals or that VelvetG improves PvP. No system in this investigation has demonstrated a superior combat outcome in a controlled comparison yet.
+
+See [LUNAR.md](LUNAR.md) for product evidence, [INTEGRATION.md](INTEGRATION.md) for exact hook contracts, [EXPERIMENTS.md](EXPERIMENTS.md) for reproducible tests, and [VALIDATION.md](VALIDATION.md) for executed checks and release gates.
+
+
+PART 2 — LUNAR AND COMPARABLE SYSTEMS
+
+# Lunar and comparable timing feedback — evidence boundary
+Inspected 20 October 2026. This document separates public options, public scorer code, product descriptions and unverified behavior.
+
+## Lunar: what is confirmed
+The public [Apollo source at 63fda2a](https://github.com/LunarClient/Apollo/tree/63fda2ae735c6ca4c29e52cb5583ae9f89ac1cc3) includes [ModKnockbackTrainer.java](https://github.com/LunarClient/Apollo/blob/63fda2ae735c6ca4c29e52cb5583ae9f89ac1cc3/api/src/main/java/com/lunarclient/apollo/mods/impl/ModKnockbackTrainer.java). This is an option declaration, not the private scorer:
+- enable default false;
+- target-ticks default 0, range 0–6;
+- window-ticks default 5, range 0–10;
+- deprecated falling-hit-sound options are still declared in that source.
+
+The [pinned documentation source](https://github.com/LunarClient/Apollo/blob/63fda2ae735c6ca4c29e52cb5583ae9f89ac1cc3/docs/developers/mods/knockbacktrainer.mdx) defines jump timing relative to the tick the player was hit, and documents the first three options. Live developer documentation/search snippets and pinned generated documentation differ in whether deprecated sound options appear; neither reveals the underlying detector.
+
+The [official recap](https://www.lunarclient.com/news/lunar-client-monthly-recap-july-2026) describes early/late jump feedback, a ground-distance graph, configurable offset/window, and session statistics such as falling-hit percentage, streak and tick error. Its title says June while its URL/body refer to July; do not silently resolve that editorial inconsistency into a precise release date. Its description of landing hits while falling is not the same statement as the developer page's incoming-hit anchor. They might describe separate subfeatures; the internal anchor remains unresolved.
+
+The official video listing [Knockback Trainer, Chat Emojis, and more! — Recap #28](https://www.youtube.com/watch?v=U5sQvRsGScc) was found. Video retrieval was unavailable/throttled; this investigation did not watch or frame-analyze it. Product images/descriptions and API settings were inspected as documentation; no installed Lunar build, live settings capture, authenticated measurement or private binary decompilation was performed.
+
+### What these sources do not establish
+| Question | Supported answer |
+|---|---|
+| Dedicated stock W-tap / hit-select trainer? | Not verified in official documentation, public Apollo tree or targeted searches. Absence from Apollo is not proof absence from every client build. |
+| Fixed versus adaptive window? | Configurable tick target/window is confirmed. Automatic adaptation is not documented in the inspected sources. |
+| Physical press, binding state, jump execution, or packet event? | Developer prose says jump press; exact hook unknown. Do not substitute the hook in another mod. |
+| Hurt-time, damage status, velocity, outgoing attack or server-enriched event anchor? | Unknown. Official descriptions are not sufficiently consistent to decide. |
+| Which client/server tick? | Unknown. Tick-valued UI does not establish synchronization with the authoritative server. |
+| Latency compensation / one-way model? | No verified implementation evidence. Lack of documentation does not prove it is absent. |
+| Successful hit confirmation? | Unknown attribution logic. Session “hits” in a UI should not be treated as instrumented damage acceptance. |
+| Statistics? | Session summaries are documented. Statistical learning, confidence calibration, randomized outcome optimization and Bayesian state inference are unverified. |
+| Why does it feel effective? | Hypothesis: immediate understandable error labels and repeatable practice anchors improve rhythm. No controlled efficacy result or attribution audit was found here. |
+
+Apollo provides server/client option integration. Calling its public class “reverse-engineered Lunar combat timing code” would be false. Search results advertising W-tap or hit-select in a third-party tool that runs alongside Lunar also do not establish a Lunar feature.
+
+## A public scorer actually inspected
+[Jump Reset Indicator source at 5d535ff](https://github.com/sootysplash/jump-reset/tree/5d535ff2d1ca9d18dbc5dc3e01ae6b09bf17e7f0) is a Fabric project linked from its [Modrinth listing](https://modrinth.com/project/kJEc5zbS); it is not a Java 8/Forge 1.8.9 drop-in. Files inspected: JumpResetIndicator.java, mixin/LivingEntityMixin.java and ConfigJR.java.
+
+Its mixin stores the local player's tickCount at jumpFromGround entry and at handleDamageEvent entry. The HUD calls the result perfect when jumpAge= hurtAge+1, with a configurable absolute-difference cutoff (default 10) and a 2.5-second time condition from the last jump. There is no network-delay estimator or learned window in these inspected files. This records jump execution and locally applied damage feedback, not physical key press or server ground truth.
+
+Additional code observations/inferences:
+- The late label uses jumpAge−hurtAge+1, while the perfect condition centers on hurtAge+1. Relative to that stated center, a two-tick positive error can be displayed for a one-tick late event. This is arithmetic inspection, not an in-game reproduction.
+- Ages and lastModTime are static with no reset shown at connection boundaries in these files. Default zeros and later damage events can interact with the display before a genuine paired event; reproduce before calling it an observed bug.
+- A later hurt event can change the score for an earlier jump while its display timeout remains active. There is no explicit per-attack identifier.
+- These limitations do not establish the same implementation or bugs in Lunar.
+
+No source is copied into CombatIQ. Apache-2.0 licensing on that project is distinct from the license and provenance of the user's client.
+
+## Comparison
+| System | What evidence establishes | Important limit |
+|---|---|---|
+| Lunar Knockback Trainer | Official tick target/window options; documented jump feedback, graph, session stats | Private scorer/anchor/latency model unknown |
+| Lunar Combo / HitColor / Keystrokes / ReachDisplay option families | Public Apollo module-option names | Their existence is not a W-tap execution analyzer or an accuracy guarantee |
+| [Badlion Combo Counter](https://www.badlion.net/wiki/combo-counter) | Official description: increments hit count, resets when hit; UI settings | Internal attribution and authoritative acceptance not exposed |
+| [Badlion Keystrokes](https://www.badlion.net/wiki/keystrokes-mod?lang=en), [Hit Color](https://www.badlion.net/wiki/hit-color?lang=en) | Key display and damage-color customization | Key display alone does not show whether movement sampled a release |
+| [BadlionClientModAPI](https://github.com/BadlionClient/BadlionClientModAPI) | Public mod-control integration API | Not source for private combat detectors |
+| Jump Reset Indicator | Actual fixed tick relation between local execution and damage callback | Modern Fabric; no server synchronization or per-hit ground truth |
+| Arbitrary W-tap listings / community “timing” systems | A listing or a player report may identify a lead | Unavailable source/build means hook precision and learning cannot be inferred |
+| CombatIQ prototype | Executed tests for sampling classification, stage separation, losses, replay and thread ownership | No Minecraft adapters, live HUD rendering or comparative PvP result yet |
+
+Useful community lead: [Hypixel W-tap timing discussion](https://hypixel.net/threads/w-tap-timing.4496539/) contains high-ping players using visible hit feedback. That is evidence of a practice habit and perceived usefulness, not a measurement of packet anchoring or damage acceptance. Exclude unsupported server-mechanics claims from the technical model.
+
+## Black-box experiments that can resolve unknowns
+Use an authorized private server, fixed client build/version hash and a screen recording synchronized to the client/server trace. Do not redistribute proprietary binaries. Save settings screenshots and record every changed option.
+
+1. Sweep jump execution at each offset around server-confirmed incoming hit; vary only the download delay. Does the displayed score move with packet receipt/application or with server time?
+2. Hold upload fixed and vary download; repeat with the opposite asymmetry. A change with one direction alone can distinguish classes of anchors, not prove exact internal code.
+3. Stall main thread after packet ingress but before application. Compare HUD labels against receive and apply ticks.
+4. Tap jump briefly without actual jumping (airborne, low ceiling, or prevented jump). Distinguish key/binding hook from executed jump.
+5. Send two controlled damage events with one jump, then two jumps around one damage. Observe pairing, expiration and whether labels are rewritten.
+6. Produce a stronger-damage accepted event without a fresh vanilla status, and an attack animation rejected by server immunity. Test false negatives/positives.
+7. Vary target/window settings by one tick, hold the trace fixed, and check exact boundary inclusion. Repeat at 10 versus 20 TPS with true tick durations recorded.
+8. Reconnect, respawn, change world/focus, and test startup defaults. Do old ages/streaks contaminate new sessions?
+9. Record 0–300 ms one-way changes and compare stable versus jittered paths. Adaptive behavior requires a repeatable rule change beyond configured fixed offsets; subjective usefulness is insufficient.
+
+Competing predictions must be registered before seeing the traces. A few screenshots cannot distinguish tick-based input, tick-based packet feedback and a shifted fixed window if their timestamps coincide in that trial. The goal is to force those anchors apart.
+
+A demonstrably better system would need lower ground-truth attribution error or better randomized manual-combat outcomes at matched overhead and cue coverage. This prototype offers testable execution diagnostics that the inspected open-source scorer lacks; it does not claim to have beaten Lunar.
+
+PART 3 — ADDITIONAL ENGINEERING AND VALIDATION NOTES AT THE STOP
+
+REPOSITORY INSPECTION AND INTEGRATION BOUNDARY
+Inspected branches included delivery/r8-integration1 (default), lean/overhaul1, lean/overhaul2 and lean/overhaul3. The new isolated branch was created from lean/overhaul3 at aedd37f4e979c4c6233aa02d0c560f668ffcdafb. No existing client functionality was changed; the work added combatiq/ and a separate workflow.
+
+Important inspected files:
+- overhaul/README.md, build.py, run-tests.py
+- overhaul/tools/LeanPatch.java, BytecodeIO.java, Remap.java, StageThree.java
+- overhaul/src/me/eldodebug/soar/lean/NativeHooks.java, FrameProbe.java, LeanSettings.java
+- overhaul/reports/AUDIT.md, LIMITATIONS.md, PROVENANCE.json
+- Older source-patch VioletInputMixin.java, VioletKeyStateMixin.java, AssistMovementMixin.java
+
+The existing build needs the exact original private baseline JAR plus game/dependency JARs. Baseline SHA256:
+3e4b0190e26b4a1540ac23ff018a8c8280b8ab447c34cce0fc5bf8cc6c2a6813
+Minecraft 1.8.9 JAR reference SHA256 in existing provenance:
+14f0d96d1a56fb4f5c3b2233d00699525893fe5ce3dcf181e7de59120595d298
+
+The repository's existing patch build uses JDK 17/21 javac --release 8, shaded ASM5 and an obfuscated-class prefix/remap workflow. It is not a complete Forge source checkout. No AGENTS.md was found in the inspected trees.
+
+Existing hook observations:
+- LeanPatch inserts NativeHooks.tick into MixinMinecraft.onTick, NativeHooks.frame into postRenderTick, and NativeHooks.shutdown into preShutdown.
+- A network preChannelRead0 hook calls NativeHooks.packet(Object). That existing path handles chat/API-key redaction and may cancel traffic. CombatIQ should not capture chat, tokens or arbitrary packet strings and should not adopt cancellation behavior.
+- NativeHooks/frame behavior has existing module gating. Telemetry should have an independent enable flag; hiding a HUD should not accidentally disable capture.
+- FrameProbe already has preallocated arrays of 4096 and an inexpensive disabled path. Preserve its behavior and existing rendering/native setup.
+- VioletKeyStateMixin intercepts key-binding mutations. It is not a physical keyboard hook. Synthetic module writes must be distinguished.
+- The visible older mixins use require=0. A telemetry integration should fail visibly when an expected hook is missing, rather than silently claim complete capture.
+- Do not change existing sprint/input/delay-fix behavior merely to obtain observations.
+
+CONCRETE ADAPTER PLAN, NOT YET IMPLEMENTED
+1. Pin the exact baseline and transformations. Inspect transformed bytecode, not only MCP names. Assert expected hook match counts and descriptors.
+2. Use a separate telemetry enable flag and session epoch for each connection/world lifecycle. Main context must include focus, gameplay GUI eligibility, world and synthetic-input state.
+3. Capture W/forward edges immediately when draining the actual keyboard queue, before binding mutation. Retain optional LWJGL timestamp as a separate clock-domain field. Do not poll or consume extra input events.
+4. Record actual forward binding state plus effective movement values at the real movement-consumption point. Place a second effective-state observation if item-use or existing modules alter the result later.
+5. Record local sprint before/after relevant attack and player update branches. Do not equate serverSprintState cache with acknowledgment.
+6. Record attack/use generation separately from outbound traversal. Observe only numeric allowlisted C02, C0B, C07 release-use, C08 use and relevant movement data. Preserve all gameplay behavior.
+7. Netty channel read records RECEIVE; main-thread handler after PacketThreadUtil handoff records APPLY. Reusing a handler HEAD hook at both invocations can double count.
+8. Use the NETWORK ring only from its owning channel event-loop thread. Main-thread send intent belongs in MAIN. Do not make an SPSC ring multi-producer. Recreate session/rings if the owner changes.
+9. Use primitive session-local correlation tokens where feasible; never retain packet objects in the telemetry buffers. Entity IDs need a spawn/session epoch before later per-opponent inference.
+10. HUD should read an immutable cached Snapshot and its preformatted text only. The present kernel provides that state but no game render hook. Existing renderer integration still needs verification.
+11. On disk/worker failure, missing hooks, overflow, sequence gaps or stale context, display unavailable/incomplete and suspend timing verdicts. Check Session.failure(), not merely cached hudText.
+12. Stop() is nonblocking for the game thread. awaitStopped() belongs on a non-game shutdown/tool thread. Abrupt termination produces an incomplete log; never invent a clean trailer.
+13. Full client binary build/launch and private-server truth comparison are prerequisites to claiming integration.
+
+SCHEMA AND BUFFER DESIGN
+CSV schema version 1 columns:
+ns,source_ns,session,producer,sequence,correlation,type,stage,tick,entity,flags,x,y,z
+
+The Java source below defines the numeric enums. A reader must preserve per-producer order and stage, not impose fictitious cross-thread causality by sorting solely by timestamps. The worker's drain order is an observed file order, not proof that every MAIN event preceded every NETWORK event. Current analysis does not join arbitrary cross-thread packets to a particular attack.
+
+Each SPSC ring stores five long arrays, five int arrays and three double arrays, approximately 84 bytes of primitive payload per slot plus headers/control fields. Two 4096-slot rings therefore have about 688,128 bytes of primitive payload, not a measured total heap footprint. Capacity is fixed, power of two, at most 65536. Overflow drops the newest event and preserves a sequence gap and loss footer. Thread ownership misuse is counted. The capture method performs no formatting, reflection, file I/O, explicit allocation or clock read; real adapters still incur timestamp and hook cost.
+
+Worker: bounded batches of up to 128 events per ring, CSV formatting off capture threads, snapshot publication about 10 Hz, parks when idle. This is a design, not a performance benchmark. CSV disk output is not size-bounded in the current prototype; recording duration/rotation/storage limits remain an integration task. Buffer capacity does not bound total disk usage.
+
+Replay refuses malformed schema/values, unknown identifiers, duplicate loss trailers, events after the loss trailer and data after END. Missing END or missing loss trailer marks incomplete. An unfinished release is censored at recording end. Default replay never confirms own hits from hurt/velocity. Trusted server trace mode requires explicit opt-in and a correctly prepared trace; a flag is not cryptographic authentication.
+
+PRIVATE-SERVER TEST PROTOCOL NOTES
+No server instrumentation/plugin or network-emulation execution was completed. The included protocol.py creates an offline manifest and analyzes paired aggregate outcomes. It never changes networking or generates inputs.
+
+Commands:
+  python3 combatiq/build.py
+  java -jar combatiq/build/combatiq-kernel.jar recording.csv
+  python3 combatiq/experiments/protocol.py --self-test
+  python3 combatiq/experiments/protocol.py --matrix > conditions.json
+  python3 combatiq/experiments/protocol.py --analyze paired.csv --condition 240-u50-stable
+
+On Windows use py -3 where appropriate and a JDK with JAVA_HOME configured. Build uses Python 3 and JDK 8+; source/bytecode target Java 8. The result is not a client mod JAR. Existing overhaul/build.py remains a separate, baseline-dependent build.
+
+The generated matrix contains 54 conditions:
+RTT added delay = 40, 120, 180, 240, 300, 400 ms;
+upload shares = 20%, 50%, 80%;
+profiles = stable (zero added variation), mild (2 ms standard deviation each direction), variable (per-direction mean/4 standard deviation).
+These are configured added delays, not measured achieved RTT. Normal-delay clamping, TCP buffering, real base latency and host scheduling can alter achieved distributions. Measure actual paths and queue delays rather than labeling the manifest ground truth.
+
+Suggested lab topology: private permitted server and two controlled clients through isolated Linux namespace/veth or a dedicated impairment gateway. Shape upload and download separately on their respective egress paths. Do not edit a public/shared primary interface or apply whole-machine lag blindly. No root/network-changing commands have been run or shipped here. Windows hardware remains the measurement target even if impairment uses a separate gateway.
+
+Ground-truth instrumentation required:
+- Server tick ID, real tick start/end nanoTime and within-tick handler ordinal.
+- Packet connection-local arrival/processing ordinal; C0B sprint value before/after.
+- C02 handler entry and validation result; authoritative distance/visibility and relevant geometry.
+- Attacker sprint before attack, victim hurtResistantTime/max/lastDamage, incoming damage, branch taken, attackEntityFrom return, final health/absorption delta.
+- Victim motion before base KB, after base KB, after extra impulse, S12 encoded payload, after player motion restoration and next movement report.
+- C08/C07 actual use state transitions and defensive block state at damage.
+- Client queue input, binding mutation, movement consumption, local sprint, send intent, outbound write, ingress receive, main-thread apply, frame interval and scheduling stalls.
+
+Instrumentation should assign IDs only in the controlled environment or join existing packet ordinals offline. Do not add public-server packets just for timing experiments. Client/server monotonic clocks cannot be subtracted directly; use synchronized same-host lab clocks or an explicitly fitted offset/skew model with residual uncertainty. Physical W timestamps require external keyboard/USB/high-speed observation; Java hooks alone do not provide them.
+
+Deterministic scenarios before human PvP:
+- Stationary, flat ground, fixed weapon/armor, no enchantments/potions; one isolated hit.
+- Equal versus stronger damage during immunity; compare status-only labels with actual acceptance.
+- Same-tick C0B start->C02 versus C02->start; test accepted and rejected first attack.
+- Several queued attacks, block/use begin/end, and release-use with attack in the same runTick branch.
+- Forward release widths approximately 10–140 ms swept across a 50 ms nominal sample cycle, with actual wall-time samples logged.
+- Focus loss, GUI, rebind, W+S, sneak, item use and synthetic-input modules.
+- Victim grounded/rising/falling, yaw/relative-position direction mismatch, walls/edges and unknown movement inputs.
+- Frame stalls of 30/100/250 ms and server tick durations at normal/variable TPS.
+- Identical ping distributions with shared bursts versus independent packet delays, asymmetric paths, TCP head-of-line blocking, opponent latency independently varied.
+- Reconnect/respawn/entity-ID reuse; start/stop logging; overflow, malformed and truncated files.
+
+Comparisons:
+No feedback, optimized fixed timing, simple event-based feedback, execution-only diagnostics, execution-conditioned SHIFT, and only then richer probabilistic/physics additions. Tune baseline and candidate on separate practice/training data and evaluate on held-out sessions/opponents/network conditions. Automated timing sweeps belong only on permitted private servers. Public operation remains passive.
+
+Statistical design:
+- Prespecify one primary endpoint and a practical improvement threshold, e.g. a target reduction in unsampled-release rate without worse accepted-sprint-hit fraction/spacing. Thresholds are decisions, not measured results.
+- Randomize matched short sessions/blocks, counterbalance order and practice effects, keep intention-to-treat arms, aggregate correlated attacks within each randomized unit.
+- CSV for protocol.py has exactly: condition,cluster,strategy,value. Each condition/independent paired cluster requires one baseline and one candidate aggregate.
+- Script reports candidate-minus-baseline mean, paired-unit percentile bootstrap CI and two-sided paired label-swap randomization p (exact for <=16 pairs, Monte Carlo otherwise).
+- It assumes independent paired units and exchangeable labels under the sharp null. It does not adjust multiple endpoints/conditions, solve observational confounding, or replace a power calculation. Small-sample/constant-value bootstrap intervals can be misleading.
+- Use pilot variance and a prespecified meaningful effect to choose sample size; do not stop when p first crosses .05. Report missing/censored units and arm-specific logging loss.
+- Evaluate hit attribution with confusion matrices against server ground truth, including damage without new hurt status and multiple attackers.
+- For probability models measure Brier score/reliability, interval coverage/width and abstention coverage. Compare at matched coverage.
+- Ablate execution conditioning, jitter model, physics, opponent identity and phase inference one at a time.
+- Fail the complexity hypothesis if a tuned fixed/event baseline matches or beats it.
+
+ACCURACY AND PERFORMANCE METRICS / PROPOSED GATES
+These are proposed targets, not benchmark achievements:
+1. Deterministic sampling classifier: zero disagreement with complete known sample traces; any missing record forces censor/incomplete rather than a false definite verdict.
+2. Server joins: report damage acceptance, new status, delivered KB and useful follow-up position as distinct endpoints.
+3. Clock precision: report timestamp granularity, hook placement delay, synchronization residuals and input/render uncertainties separately; do not advertise nanosecond physical accuracy.
+4. Interval prediction: nominal 90%/95% intervals must achieve matching held-out coverage, including 300/400 ms and asymmetry; report widths and withheld cases.
+5. Capture overhead target for actual hardware: p99 added total capture work below a predeclared per-frame budget (initial engineering target 0.2 ms), no statistically supported p99/p99.9 frame-time regression beyond the agreed margin, and no capture-thread allocations after warmup. These need measured A/B evidence.
+6. Measure allocation bytes/event, worker CPU, memory, GC pauses, dropped events, output bytes/sec and worst burst drain delay. A fixed buffer or successful CI is not evidence of low FPS overhead.
+7. Disabled capture should bypass timestamp calls and rendering; adapter behavior remains to be implemented.
+8. Evaluate warmup, recording on/off, HUD on/off, disk slow/full and main-thread stalls on Windows 10 i5-1135G7/MX350.
+
+ROADMAP AT THE STOP
+Stage 0 completed: standalone primitive telemetry kernel, conservative sampling classifier, separate stages/states, loss-aware CSV replay, cached HUD text, Java/Python tests and CI.
+Stage 1 pending: exact-baseline adapters, hook coverage checks, numeric packet allowlist, session lifecycle, actual optional HUD integration. Acceptance: bytecode verification + no behavioral changes + traces show each intended stage exactly once.
+Stage 2 pending: controlled server ground truth and deterministic mechanism tests. Acceptance: source predictions reproduced or revised, all ambiguous labels enumerated, no false own-hit confirmations.
+Stage 3 pending: hardware overhead measurement and frame-pacing A/B. Acceptance: prespecified budget achieved, no unaccounted drops or render regression.
+Stage 4 pending: execution-only manual coaching against tuned fixed/event baselines. Acceptance: held-out practical gain with uncertainty and no spacing/damage harm.
+Stage 5 conditional: small SHIFT table, robust relative-gap modeling and isolated SPAR identification. Add only components with incremental evidence.
+Defer/abandon if unsupported: exact server phase HUD, RTT/2 “perfect” delays, percentages without calibrated likelihoods, always-on opponent HMM/deep models, GPU graphs and public automated inputs.
+
+WHAT STILL REQUIRES THE USER'S ENVIRONMENT
+- Exact private baseline/dependencies and legally available client build environment.
+- Actual transformed-bytecode hook inspection and Forge/client launch.
+- Windows input pipeline and clock-domain calibration.
+- Optional HUD drawing with existing render/config frameworks.
+- Private server instrumentation and impairment gateway.
+- Controlled opponents, real manual practice and comparative outcome data.
+- Hardware profiling of CPU, allocations, GC and frame times.
+- Lunar black-box recording with exact build/settings; its private scorer remains unknown.
+- Pika/MMC rules and actual backend behavior; no assumption of vanilla equivalence is justified.
+
+WORK NOT FINISHED
+No integrated CombatIQ client JAR, no ground-truth server plugin, no actual netem scripts/configuration application, no real-time adaptive recommendation model, no FPS benchmark, no comparative gameplay data, no draft PR, and no claimed superior combat result.
+The strongest current recommendation remains passive execution diagnosis first, then only empirically supported personalized timing. This export preserves the completed work without presenting pending tasks as completed deliverables.
+
+PART 4 — COMPLETE NEW SOURCE / BUILD / TEST FILES
+
+
+========== FILE: combatiq/src/main/java/me/movi/combatiq/CombatIQ.java ==========
+
+package me.movi.combatiq;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
+
+/**
+ * Passive, dependency-free telemetry kernel. No Minecraft/network/input mutation.
+ * Timestamp stages describe observations, never physical switch or server time.
+ */
+public final class CombatIQ {
+    private CombatIQ() {}
+    public static final int MAIN = 0, NETWORK = 1, SERVER = 2;
+    public static final int INPUT_QUEUE = 1, BINDING = 2, SAMPLE = 3,
+            INTENT = 4, WRITE = 5, RECEIVE = 6, APPLY = 7, GROUND_TRUTH = 8;
+    public static final int CONTEXT = 1, FORWARD_EDGE = 2, MOVEMENT_SAMPLE = 3,
+            LOCAL_SPRINT = 4, SPRINT_START = 5, SPRINT_STOP = 6, ATTACK = 7,
+            USE_START = 8, USE_END = 9, HURT = 10, VELOCITY = 11,
+            POSITION = 12, FRAME = 13, BINDING_CHANGE = 14,
+            SERVER_ACCEPT = 15, TICK = 16, CORRECTION = 17;
+    public static final int DOWN = 1, FOCUSED = 2, IN_WORLD = 4, GAMEPLAY = 8,
+            BINDING_DOWN = 16, SYNTHETIC = 32, MODIFIED_INPUT = 64;
+    public static final long UNKNOWN_SOURCE_TIME = Long.MIN_VALUE;
+    public static final String HEADER =
+            "ns,source_ns,session,producer,sequence,correlation,type,stage,tick,entity,flags,x,y,z";
+
+    /** Consumer-owned reusable carrier. Never retain it after a poll/accept callback. */
+    public static final class Event {
+        public long ns, sourceNs, session, sequence, correlation;
+        public int producer, type, stage, tick, entity, flags;
+        public double x, y, z;
+    }
+
+    private static final class Gate { volatile boolean accepting = true; }
+
+    /** SPSC ring. One owning producer and one owning consumer; ownership is checked. */
+    public static final class Ring {
+        private final int mask, producer;
+        private final long[] ns, source, session, seq, correlation;
+        private final int[] type, stage, tick, entity, flags;
+        private final double[] x, y, z;
+        private volatile long head, tail;
+        private long nextSequence;
+        private volatile long dropped;
+        private final AtomicLong producerOwner = new AtomicLong();
+        private final AtomicLong consumerOwner = new AtomicLong();
+        private final AtomicLong misuse = new AtomicLong();
+        private final Gate gate;
+        private volatile boolean inOffer;
+
+        public Ring(int capacity, int producer) { this(capacity, producer, new Gate()); }
+        private Ring(int capacity, int producer, Gate gate) {
+            if (capacity < 2 || capacity > 65536 || (capacity & (capacity - 1)) != 0)
+                throw new IllegalArgumentException("capacity must be a power of two in [2,65536]");
+            if (producer < MAIN || producer > SERVER) throw new IllegalArgumentException("producer");
+            this.producer = producer; this.gate = gate; mask = capacity - 1;
+            ns = new long[capacity]; source = new long[capacity];
+            session = new long[capacity]; seq = new long[capacity]; correlation = new long[capacity];
+            type = new int[capacity]; stage = new int[capacity]; tick = new int[capacity];
+            entity = new int[capacity]; flags = new int[capacity];
+            x = new double[capacity]; y = new double[capacity]; z = new double[capacity];
+        }
+
+        private boolean owns(AtomicLong owner) {
+            long id = Thread.currentThread().getId(), current = owner.get();
+            return current == id || (current == 0 && owner.compareAndSet(0, id));
+        }
+
+        /**
+         * No allocations or clock reads here. Pass ns from the actual observation hook.
+         * sourceNs is an optional timestamp in a separately documented clock domain.
+         * Full buffers drop the new record; sequence gaps and a loss footer expose it.
+         */
+        public boolean offer(long atNs, long sourceNs, long sessionId, long token,
+                             int eventType, int eventStage, int clientTick, int entityId,
+                             int eventFlags, double a, double b, double c) {
+            if (!gate.accepting) return false;
+            if (!owns(producerOwner)) { misuse.incrementAndGet(); return false; }
+            inOffer = true;
+            try {
+                if (!gate.accepting) return false;
+                long sequence = ++nextSequence, h = head;
+                if (h - tail >= ns.length) { dropped++; return false; }
+                int i = (int) h & mask;
+                ns[i] = atNs; source[i] = sourceNs; session[i] = sessionId;
+                seq[i] = sequence; correlation[i] = token;
+                type[i] = eventType; stage[i] = eventStage; tick[i] = clientTick;
+                entity[i] = entityId; flags[i] = eventFlags;
+                x[i] = a; y[i] = b; z[i] = c;
+                head = h + 1; // volatile release publishes the complete record
+                return true;
+            } finally { inOffer = false; }
+        }
+
+        public boolean poll(Event out) {
+            if (!owns(consumerOwner)) { misuse.incrementAndGet(); return false; }
+            long t = tail;
+            if (t == head) return false; // volatile acquire before payload reads
+            int i = (int) t & mask;
+            out.ns = ns[i]; out.sourceNs = source[i]; out.session = session[i];
+            out.sequence = seq[i]; out.correlation = correlation[i]; out.producer = producer;
+            out.type = type[i]; out.stage = stage[i]; out.tick = tick[i];
+            out.entity = entity[i]; out.flags = flags[i];
+            out.x = x[i]; out.y = y[i]; out.z = z[i];
+            tail = t + 1;
+            return true;
+        }
+        public long dropped() { return dropped; }
+        public long misuse() { return misuse.get(); }
+        public boolean isEmpty() { return head == tail; }
+        private boolean quiescent() { return !inOffer; }
+    }
+
+    /** Descriptive local analyzer. It intentionally makes no public-server hit claims. */
+    public static final class Analyzer {
+        private final boolean trustServerTruth;
+        private final long[] previousSequence = new long[3];
+        private final long[] previousNs = new long[3];
+        private final boolean[] hasPrevious = new boolean[3];
+        private boolean context, releaseOpen, releaseSampled, rawKnown, rawDown;
+        private boolean localSprintKnown, localSprint, writtenSprintKnown, writtenSprint;
+        private boolean complete = true;
+        private long session = Long.MIN_VALUE, releaseAt;
+        private long unsampled, sampled, censored, modifiedSamples, attackIntents, attackWrites;
+        private long hurtReceives, hurtApplies, velocityReceives, useWrites, confirmedHits, gaps;
+        private long lastFrameNs, lastFrameInterval;
+        private boolean hasFrame;
+        private long latestObservationNs;
+        public Analyzer() { this(false); }
+        public Analyzer(boolean trustServerTruth) { this.trustServerTruth = trustServerTruth; }
+
+        private void censor() {
+            if (releaseOpen) censored++;
+            releaseOpen = false; rawKnown = false;
+        }
+
+        /** Close a recording boundary without inventing a matching press. Idempotent. */
+        public void finish() { censor(); }
+
+        public void invalidate() {
+            complete = false; censor(); writtenSprintKnown = false;
+        }
+
+        public void accept(Event e) {
+            if (e.producer < 0 || e.producer > 2) { invalidate(); return; }
+            int p = e.producer;
+            if (hasPrevious[p] && (e.sequence != previousSequence[p] + 1
+                    || e.ns - previousNs[p] < 0)) {
+                gaps++; invalidate();
+            } else if (!hasPrevious[p] && e.sequence != 1) {
+                gaps++; invalidate();
+            }
+            previousSequence[p] = e.sequence; previousNs[p] = e.ns; hasPrevious[p] = true;
+            latestObservationNs = e.ns;
+            if (p == MAIN && e.type == CONTEXT) {
+                boolean next = (e.flags & (FOCUSED | IN_WORLD | GAMEPLAY))
+                        == (FOCUSED | IN_WORLD | GAMEPLAY);
+                if (e.session != session || next != context) {
+                    censor(); localSprintKnown = false; writtenSprintKnown = false;
+                    hasFrame = false;
+                }
+                session = e.session; context = next;
+                return;
+            }
+            if (e.session != session) return; // retain in log; don't join across connections
+            if (p == MAIN) {
+                if (e.type == FORWARD_EDGE && e.stage == INPUT_QUEUE && context && complete) {
+                    if ((e.flags & SYNTHETIC) != 0) { censor(); return; }
+                    boolean down = (e.flags & DOWN) != 0;
+                    if (rawKnown && rawDown == down) return; // repeat, not a fresh edge
+                    rawKnown = true; rawDown = down;
+                    if (!down) {
+                        releaseOpen = true; releaseSampled = false; releaseAt = e.ns;
+                    } else if (releaseOpen) {
+                        if (e.ns - releaseAt < 0) { invalidate(); return; }
+                        if (releaseSampled) sampled++; else unsampled++;
+                        releaseOpen = false;
+                    }
+                } else if (e.type == MOVEMENT_SAMPLE && e.stage == SAMPLE) {
+                    if ((e.flags & MODIFIED_INPUT) != 0) modifiedSamples++;
+                    if (releaseOpen && context && complete && (e.flags & BINDING_DOWN) == 0)
+                        releaseSampled = true;
+                    // moveForward == 0 is NOT evidence that W was released.
+                } else if (e.type == BINDING_CHANGE && (e.flags & SYNTHETIC) != 0) {
+                    censor();
+                } else if (e.type == LOCAL_SPRINT && e.stage == SAMPLE) {
+                    localSprintKnown = true; localSprint = (e.flags & DOWN) != 0;
+                } else if (e.type == ATTACK && e.stage == INTENT) attackIntents++;
+                else if (e.type == FRAME) {
+                    if (hasFrame) lastFrameInterval = e.ns - lastFrameNs;
+                    lastFrameNs = e.ns; hasFrame = true;
+                } else if (e.type == CORRECTION) censor();
+            }
+            if (p == NETWORK && e.stage == WRITE) {
+                if (e.type == SPRINT_START || e.type == SPRINT_STOP) {
+                    writtenSprintKnown = true; writtenSprint = e.type == SPRINT_START;
+                } else if (e.type == ATTACK) attackWrites++;
+                else if (e.type == USE_START || e.type == USE_END) useWrites++;
+            }
+            if (e.type == HURT && e.stage == RECEIVE) hurtReceives++;
+            if (e.type == HURT && e.stage == APPLY) hurtApplies++;
+            if (e.type == VELOCITY && e.stage == RECEIVE) velocityReceives++;
+            if (trustServerTruth && p == SERVER && e.type == SERVER_ACCEPT
+                    && e.stage == GROUND_TRUTH) confirmedHits++;
+        }
+
+        public Snapshot snapshot() {
+            return new Snapshot(complete, unsampled, sampled, censored, modifiedSamples,
+                    attackIntents, attackWrites, hurtReceives, hurtApplies, velocityReceives,
+                    useWrites, confirmedHits, gaps, localSprintKnown, localSprint,
+                    writtenSprintKnown, writtenSprint, lastFrameInterval, latestObservationNs);
+        }
+    }
+
+    /** Immutable, worker-published HUD state; construction/formatting stays off capture threads. */
+    public static final class Snapshot {
+        public final boolean complete, localSprintKnown, localSprint,
+                writtenSprintKnown, writtenSprint;
+        public final long unsampledReleases, sampledReleases, censoredReleases,
+                modifiedSamples, attackIntents, attackWrites, hurtReceives, hurtApplies,
+                velocityReceives, useWrites, confirmedHits, gaps, frameIntervalNs, observationNs;
+        public final String hudText;
+        private Snapshot(boolean complete, long unsampled, long sampled, long censored,
+                         long modified, long intents, long writes, long hurtRx, long hurtApply,
+                         long velocity, long uses, long confirmed, long gaps,
+                         boolean localKnown, boolean local, boolean writtenKnown, boolean written,
+                         long frame, long at) {
+            this.complete = complete; unsampledReleases = unsampled; sampledReleases = sampled;
+            censoredReleases = censored; modifiedSamples = modified;
+            attackIntents = intents; attackWrites = writes;
+            hurtReceives = hurtRx; hurtApplies = hurtApply; velocityReceives = velocity;
+            useWrites = uses; confirmedHits = confirmed; this.gaps = gaps;
+            localSprintKnown = localKnown; localSprint = local;
+            writtenSprintKnown = writtenKnown; writtenSprint = written;
+            frameIntervalNs = frame; observationNs = at;
+            hudText = complete
+                    ? "CombatIQ | unsampled " + unsampled + " | sampled " + sampled
+                      + " | attack writes " + writes + " | server acceptance unknown"
+                    : "CombatIQ | incomplete telemetry; timing verdicts suspended";
+        }
+    }
+
+    public static void writeEvent(Writer out, Event e) throws IOException {
+        out.write(e.ns + "," + e.sourceNs + "," + e.session + "," + e.producer + ","
+                + e.sequence + "," + e.correlation + "," + e.type + "," + e.stage + ","
+                + e.tick + "," + e.entity + "," + e.flags + ","
+                + e.x + "," + e.y + "," + e.z + "\n");
+    }
+
+    /** Strict schema/version, explicit loss trailer, and conservative truncated-log handling. */
+    public static Snapshot replay(Reader input, boolean trustServerTruth) throws IOException {
+        BufferedReader reader = new BufferedReader(input);
+        if (!"# CombatIQ schema=1".equals(reader.readLine())
+                || !HEADER.equals(reader.readLine())) throw new IOException("Unsupported telemetry schema");
+        Analyzer a = new Analyzer(trustServerTruth);
+        Event e = new Event();
+        String line; boolean ended = false, lossSeen = false;
+        while ((line = reader.readLine()) != null) {
+            if (line.length() > 2048) throw new IOException("Oversized telemetry row");
+            if (line.startsWith("# LOSS,")) {
+                if (lossSeen) throw new IOException("Repeated loss trailer");
+                lossSeen = true;
+                String[] f = line.split(",", -1);
+                if (f.length != 5) throw new IOException("Malformed loss trailer");
+                try {
+                    for (int i = 1; i < 5; i++) {
+                        long n = Long.parseLong(f[i]);
+                        if (n < 0) throw new NumberFormatException("negative loss");
+                        if (n != 0) a.invalidate();
+                    }
+                } catch (NumberFormatException ex) { throw new IOException("Malformed loss count", ex); }
+                continue;
+            }
+            if ("# END".equals(line)) { ended = true; break; }
+            if (lossSeen) throw new IOException("Event after loss trailer");
+            if (line.startsWith("#")) throw new IOException("Unknown telemetry control row");
+            String[] f = line.split(",", -1);
+            if (f.length != 14) throw new IOException("Malformed telemetry row");
+            try {
+                e.ns = Long.parseLong(f[0]); e.sourceNs = Long.parseLong(f[1]);
+                e.session = Long.parseLong(f[2]); e.producer = Integer.parseInt(f[3]);
+                e.sequence = Long.parseLong(f[4]); e.correlation = Long.parseLong(f[5]);
+                e.type = Integer.parseInt(f[6]); e.stage = Integer.parseInt(f[7]);
+                e.tick = Integer.parseInt(f[8]); e.entity = Integer.parseInt(f[9]);
+                e.flags = Integer.parseInt(f[10]); e.x = Double.parseDouble(f[11]);
+                e.y = Double.parseDouble(f[12]); e.z = Double.parseDouble(f[13]);
+                if (!Double.isFinite(e.x) || !Double.isFinite(e.y) || !Double.isFinite(e.z))
+                    throw new NumberFormatException("non-finite payload");
+                if (e.producer < MAIN || e.producer > SERVER || e.sequence <= 0
+                        || e.type < CONTEXT || e.type > CORRECTION
+                        || e.stage < INPUT_QUEUE || e.stage > GROUND_TRUTH
+                        || e.flags < 0 || (e.flags & ~127) != 0)
+                    throw new NumberFormatException("unknown event identifier");
+            } catch (NumberFormatException ex) { throw new IOException("Invalid telemetry value", ex); }
+            a.accept(e);
+        }
+        if (!ended || !lossSeen) a.invalidate();
+        else if (reader.readLine() != null) throw new IOException("Data after END");
+        a.finish();
+        return a.snapshot();
+    }
+
+    /**
+     * Optional async CSV recording. Hooks offer only primitives. One writer owns both
+     * consumers and the Analyzer. Drain order is recorded, not asserted global causality.
+     * Call stop() on the game thread; awaitStopped() only from a non-game shutdown/tool thread.
+     */
+    public static final class Session implements AutoCloseable {
+        private final Gate gate = new Gate();
+        public final Ring main, network;
+        private final Thread worker;
+        private volatile Snapshot snapshot = new Analyzer().snapshot();
+        private volatile IOException failure;
+        private volatile boolean stopped;
+        public Session(final Path output, int capacity) {
+            main = new Ring(capacity, MAIN, gate); network = new Ring(capacity, NETWORK, gate);
+            worker = new Thread(new Runnable() {
+                public void run() { record(output); }
+            }, "VelvetG-CombatIQ-recorder");
+            worker.setDaemon(true); worker.start();
+        }
+        public boolean isAccepting() { return gate.accepting; }
+        public Snapshot snapshot() { return snapshot; }
+        public IOException failure() { return failure; }
+        public boolean isStopped() { return stopped; }
+        public void stop() { gate.accepting = false; LockSupport.unpark(worker); }
+        private void record(Path path) {
+            Analyzer analyzer = new Analyzer(); Event event = new Event();
+            long lastPublish = System.nanoTime();
+            try (BufferedWriter out = Files.newBufferedWriter(path, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+                out.write("# CombatIQ schema=1\n"); out.write(HEADER); out.write('\n');
+                while (gate.accepting || !main.quiescent() || !network.quiescent()
+                        || !main.isEmpty() || !network.isEmpty()) {
+                    int count = 0;
+                    for (int i = 0; i < 128 && main.poll(event); i++) {
+                        analyzer.accept(event); writeEvent(out, event); count++;
+                    }
+                    for (int i = 0; i < 128 && network.poll(event); i++) {
+                        analyzer.accept(event); writeEvent(out, event); count++;
+                    }
+                    if (main.dropped() + network.dropped() + main.misuse() + network.misuse() > 0)
+                        analyzer.invalidate();
+                    long now = System.nanoTime();
+                    if (now - lastPublish >= 100000000L) {
+                        snapshot = analyzer.snapshot(); lastPublish = now;
+                    }
+                    if (count == 0) LockSupport.parkNanos(1000000L);
+                }
+                if (main.dropped() + network.dropped() + main.misuse() + network.misuse() > 0)
+                    analyzer.invalidate();
+                analyzer.finish();
+                out.write("# LOSS," + main.dropped() + "," + network.dropped() + ","
+                        + main.misuse() + "," + network.misuse() + "\n# END\n");
+                snapshot = analyzer.snapshot();
+            } catch (IOException ex) { failure = ex; gate.accepting = false; }
+            catch (RuntimeException ex) {
+                failure = new IOException("Recorder failed", ex); gate.accepting = false;
+            } finally { stopped = true; }
+        }
+        public void awaitStopped(long timeoutMs) throws IOException, InterruptedException {
+            if (timeoutMs <= 0) throw new IllegalArgumentException("positive timeout required");
+            worker.join(timeoutMs);
+            if (worker.isAlive()) throw new IOException("Recorder stop timed out");
+            if (failure != null) throw failure;
+        }
+        public void close() { stop(); }
+    }
+
+    public static void main(String[] args) throws Exception {
+        if (args.length < 1 || args.length > 2
+                || (args.length == 2 && !"--trusted-server-trace".equals(args[1])))
+            throw new IllegalArgumentException("Usage: CombatIQ recording.csv [--trusted-server-trace]");
+        try (Reader in = Files.newBufferedReader(Paths.get(args[0]), StandardCharsets.UTF_8)) {
+            Snapshot s = replay(in, args.length == 2);
+            System.out.println(s.hudText);
+            System.out.println("complete=" + s.complete + " censored=" + s.censoredReleases
+                    + " hurtReceives=" + s.hurtReceives + " confirmedHits=" + s.confirmedHits);
+        }
+    }
+}
+
+
+
+========== FILE: combatiq/src/test/java/me/movi/combatiq/CombatIQTest.java ==========
+
+package me.movi.combatiq;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.concurrent.atomic.AtomicReference;
+import static me.movi.combatiq.CombatIQ.*;
+
+/** Executable dependency-free regression suite. It does not simulate Minecraft physics. */
+public final class CombatIQTest {
+    private static int assertions;
+    private static void check(boolean value, String message) {
+        assertions++; if (!value) throw new AssertionError(message);
+    }
+    private static Event e(long ns, long seq, int type, int stage, int flags) {
+        Event e = new Event();
+        e.ns = ns; e.sourceNs = UNKNOWN_SOURCE_TIME; e.sequence = seq;
+        e.session = 1; e.producer = MAIN; e.type = type; e.stage = stage; e.flags = flags;
+        return e;
+    }
+    private static Analyzer active() {
+        Analyzer a = new Analyzer();
+        a.accept(e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY));
+        return a;
+    }
+    private static void sampling() {
+        Analyzer a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(20, 3, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().unsampledReleases == 1, "release entirely between samples");
+        check(a.snapshot().sampledReleases == 0, "unsampled not double counted");
+
+        a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(15, 3, MOVEMENT_SAMPLE, SAMPLE, 0));
+        a.accept(e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().sampledReleases == 1, "consumed binding-up sample");
+        check(a.snapshot().unsampledReleases == 0, "sampled release not called missed");
+
+        a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        Event sample = e(15, 3, MOVEMENT_SAMPLE, SAMPLE, BINDING_DOWN | MODIFIED_INPUT);
+        sample.x = 0; a.accept(sample);
+        a.accept(e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().unsampledReleases == 1, "zero forward motion is not a release sample");
+        check(a.snapshot().modifiedSamples == 1, "modified input retained");
+
+        a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(11, 3, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        a.accept(e(21, 5, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().unsampledReleases == 1, "repeat edges ignored");
+
+        a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, SYNTHETIC));
+        a.accept(e(20, 3, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().unsampledReleases == 0, "synthetic release not scored");
+    }
+    private static void boundaries() {
+        Analyzer a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(15, 3, CONTEXT, SAMPLE, IN_WORLD));
+        a.accept(e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().censoredReleases == 1, "focus loss censors pending interval");
+        check(a.snapshot().unsampledReleases == 0, "focus loss is not a missed tap");
+
+        a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        Event boundary = e(15, 3, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY);
+        boundary.session = 2; a.accept(boundary);
+        Event press = e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN); press.session = 2;
+        a.accept(press);
+        check(a.snapshot().censoredReleases == 1, "connection identity bounds a release");
+        check(a.snapshot().unsampledReleases == 0, "no cross-connection pairing");
+
+        a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(!a.snapshot().complete, "missing sequence suspends verdicts");
+        check(a.snapshot().unsampledReleases == 0, "gap cannot create a false miss");
+        check(a.snapshot().censoredReleases == 1, "gap censors interval");
+
+        a = active();
+        a.accept(e(20, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(10, 3, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(!a.snapshot().complete, "same-producer backwards time invalidated");
+
+        a = active();
+        a.accept(e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0));
+        a.accept(e(15, 3, CORRECTION, APPLY, 0));
+        a.accept(e(20, 4, FORWARD_EDGE, INPUT_QUEUE, DOWN));
+        check(a.snapshot().unsampledReleases == 0, "correction censors pairing");
+    }
+    private static void stages() {
+        Analyzer a = active();
+        a.accept(e(1, 2, LOCAL_SPRINT, SAMPLE, DOWN));
+        Event n = e(1, 1, SPRINT_STOP, WRITE, 0); n.producer = NETWORK; a.accept(n);
+        Snapshot s = a.snapshot();
+        check(s.localSprintKnown && s.localSprint, "local sprint retained");
+        check(s.writtenSprintKnown && !s.writtenSprint, "written sprint separately retained");
+        a.accept(e(2, 3, ATTACK, INTENT, 0));
+        n = e(2, 2, ATTACK, WRITE, 0); n.producer = NETWORK; a.accept(n);
+        n = e(3, 3, HURT, RECEIVE, 0); n.producer = NETWORK; a.accept(n);
+        a.accept(e(4, 4, HURT, APPLY, 0));
+        n = e(4, 4, VELOCITY, RECEIVE, 0); n.producer = NETWORK; a.accept(n);
+        n = e(5, 5, USE_START, WRITE, 0); n.producer = NETWORK; a.accept(n);
+        s = a.snapshot();
+        check(s.attackIntents == 1 && s.attackWrites == 1, "intent and write counted separately");
+        check(s.hurtReceives == 1 && s.hurtApplies == 1, "receive and apply separated");
+        check(s.velocityReceives == 1 && s.useWrites == 1, "velocity and use observed");
+        check(s.confirmedHits == 0, "hurt plus velocity never confirms own hit");
+
+        Event truth = e(6, 1, SERVER_ACCEPT, GROUND_TRUTH, 0); truth.producer = SERVER;
+        a.accept(truth);
+        check(a.snapshot().confirmedHits == 0, "untrusted trace cannot assert ground truth");
+        Analyzer trusted = new Analyzer(true);
+        trusted.accept(e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY));
+        trusted.accept(truth);
+        check(trusted.snapshot().confirmedHits == 1, "explicit private-server truth accepted");
+
+        a = active();
+        Event stale = e(1, 1, SPRINT_START, WRITE, 0);
+        stale.producer = NETWORK; stale.session = 99; a.accept(stale);
+        check(!a.snapshot().writtenSprintKnown, "stale connection packet excluded from state");
+        a.accept(e(100, 2, FRAME, SAMPLE, 0));
+        a.accept(e(105, 3, FRAME, SAMPLE, 0));
+        check(a.snapshot().frameIntervalNs == 5, "wall frame interval independent of tick index");
+    }
+    private static boolean offer(Ring r, long at, int type, int flags) {
+        return r.offer(at, UNKNOWN_SOURCE_TIME, 1, at, type, SAMPLE, 0, 0, flags, at, -at, at / 2.0);
+    }
+    private static void rings() throws Exception {
+        boolean rejected = false;
+        try { new Ring(3, MAIN); } catch (IllegalArgumentException ex) { rejected = true; }
+        check(rejected, "non-power-of-two capacity rejected");
+        Ring r = new Ring(2, MAIN);
+        check(offer(r, 1, TICK, 0) && offer(r, 2, TICK, 0), "capacity usable");
+        check(!offer(r, 3, TICK, 0) && r.dropped() == 1, "full buffer drops newest");
+        Event out = new Event();
+        check(r.poll(out) && out.sequence == 1 && out.x == 1, "first payload/order");
+        check(offer(r, 4, TICK, 0), "slot reuse after drain");
+        check(r.poll(out) && out.sequence == 2, "unconsumed entry retained");
+        check(r.poll(out) && out.sequence == 4, "sequence exposes dropped offer");
+        check(!r.poll(out), "empty ring");
+
+        final Ring owned = new Ring(8, MAIN);
+        offer(owned, 1, TICK, 0);
+        Thread wrong = new Thread(new Runnable() {
+            public void run() { offer(owned, 2, TICK, 0); }
+        }); wrong.start(); wrong.join();
+        check(owned.misuse() == 1, "second producer rejected rather than racing");
+
+        final Ring concurrent = new Ring(256, MAIN);
+        final int total = 100000;
+        final AtomicReference<Throwable> failure = new AtomicReference<Throwable>();
+        final long[] accepted = new long[1], read = new long[1];
+        Thread producer = new Thread(new Runnable() {
+            public void run() {
+                try { for (int i = 1; i <= total; i++) if (offer(concurrent, i, TICK, 0)) accepted[0]++; }
+                catch (Throwable ex) { failure.set(ex); }
+            }
+        });
+        Thread consumer = new Thread(new Runnable() {
+            public void run() {
+                Event event = new Event(); long prior = 0;
+                try {
+                    while (producer.isAlive() || !concurrent.isEmpty()) {
+                        if (concurrent.poll(event)) {
+                            if (event.sequence <= prior || event.x != event.ns
+                                    || event.y != -event.ns || event.z != event.ns / 2.0)
+                                throw new AssertionError("torn or reordered event");
+                            prior = event.sequence; read[0]++;
+                        } else Thread.yield();
+                    }
+                } catch (Throwable ex) { failure.set(ex); }
+            }
+        });
+        producer.start(); consumer.start(); producer.join(); consumer.join();
+        if (failure.get() != null) throw new AssertionError(failure.get());
+        check(accepted[0] == read[0], "all accepted concurrent records read");
+        check(accepted[0] + concurrent.dropped() == total, "all offers accounted for");
+    }
+    private static String log(Event... events) throws IOException {
+        StringWriter w = new StringWriter();
+        w.write("# CombatIQ schema=1\n" + HEADER + "\n");
+        for (Event e : events) writeEvent(w, e);
+        w.write("# LOSS,0,0,0,0\n# END\n"); return w.toString();
+    }
+    private static void replayTests() throws Exception {
+        Event context = e(0, 1, CONTEXT, SAMPLE, FOCUSED | IN_WORLD | GAMEPLAY);
+        Event release = e(10, 2, FORWARD_EDGE, INPUT_QUEUE, 0);
+        Event press = e(20, 3, FORWARD_EDGE, INPUT_QUEUE, DOWN);
+        String text = log(context, release, press);
+        Snapshot s = replay(new StringReader(text), false);
+        check(s.complete && s.unsampledReleases == 1, "CSV round trip preserves analysis");
+        check(!replay(new StringReader(text.replace("# LOSS,0,0,0,0", "# LOSS,1,0,0,0")), false)
+                .complete, "tail loss survives replay");
+        check(!replay(new StringReader(text.replace("# END\n", "")), false).complete,
+                "truncated recording is incomplete");
+        boolean bad = false;
+        try { replay(new StringReader(text.replace("schema=1", "schema=99")), false); }
+        catch (IOException ex) { bad = true; }
+        check(bad, "unsupported schema refused");
+        bad = false;
+        try { replay(new StringReader(text + "extra\n"), false); } catch (IOException ex) { bad = true; }
+        check(bad, "trailing data refused");
+        String huge = text.replace("20,-922", "NaN,-922");
+        bad = false;
+        try { replay(new StringReader(huge), false); } catch (IOException ex) { bad = true; }
+        check(bad, "invalid timestamp refused");
+        check(!replay(new StringReader(text.replace("# LOSS,0,0,0,0\n", "")), false).complete,
+                "missing loss trailer cannot masquerade as complete");
+        bad = false;
+        try { replay(new StringReader(text.replace("# END", "# LOSS,0,0,0,0\n# END")), false); }
+        catch (IOException ex) { bad = true; }
+        check(bad, "duplicate loss trailer refused");
+        bad = false;
+        StringWriter extra = new StringWriter(); writeEvent(extra, press);
+        try { replay(new StringReader(text.replace("# END", extra.toString() + "# END")), false); }
+        catch (IOException ex) { bad = true; }
+        check(bad, "events after loss trailer refused");
+        Snapshot pending = replay(new StringReader(log(context, release)), false);
+        check(pending.complete && pending.censoredReleases == 1 && pending.unsampledReleases == 0,
+                "unfinished release is censored at recording end");
+    }
+    private static void async() throws Exception {
+        Path dir = Files.createTempDirectory("combatiq-test-");
+        Path path = dir.resolve("trace.csv");
+        Session session = new Session(path, 32);
+        session.main.offer(0, UNKNOWN_SOURCE_TIME, 1, 0, CONTEXT, SAMPLE, 0, 0,
+                FOCUSED | IN_WORLD | GAMEPLAY, 0, 0, 0);
+        session.main.offer(10, UNKNOWN_SOURCE_TIME, 1, 0, FORWARD_EDGE, INPUT_QUEUE, 0, 0, 0, 0, 0, 0);
+        session.main.offer(20, UNKNOWN_SOURCE_TIME, 1, 0, FORWARD_EDGE, INPUT_QUEUE, 0, 0, DOWN, 0, 0, 0);
+        session.stop(); session.awaitStopped(5000);
+        check(session.isStopped() && session.failure() == null, "async stop drains and closes");
+        check(session.snapshot().unsampledReleases == 1, "live worker analysis");
+        try (Reader in = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            Snapshot replayed = replay(in, false);
+            check(replayed.complete && replayed.unsampledReleases == 1, "async export replay");
+        }
+        Session duplicate = new Session(path, 2);
+        duplicate.stop();
+        boolean refused = false;
+        try { duplicate.awaitStopped(5000); } catch (IOException ex) { refused = true; }
+        check(refused, "existing recording never overwritten");
+        check(!offer(session.main, 100, TICK, 0), "stopped producer refuses capture");
+        Files.delete(path); Files.delete(dir);
+    }
+    public static void main(String[] args) throws Exception {
+        sampling(); boundaries(); stages(); rings(); replayTests(); async();
+        System.out.println("PASS: " + assertions + " assertions; Java " + System.getProperty("java.version"));
+        System.out.println("Scope: telemetry kernel, concurrency, replay and file lifecycle. No game/FPS validation.");
+    }
+}
+
+
+
+========== FILE: combatiq/build.py ==========
+
+#!/usr/bin/env python3
+"""Compile/test the standalone kernel on JDK 8+; no game JAR or downloaded dependency."""
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import re
+import shutil
+import struct
+import subprocess
+import sys
+import zipfile
+
+ROOT = pathlib.Path(__file__).resolve().parent
+
+def executable(name):
+    suffix = ".exe" if os.name == "nt" else ""
+    if os.environ.get("JAVA_HOME"):
+        candidate = pathlib.Path(os.environ["JAVA_HOME"]) / "bin" / (name + suffix)
+        if candidate.is_file():
+            return str(candidate)
+    found = shutil.which(name)
+    if not found:
+        raise SystemExit("Missing " + name + "; install a JDK (a JRE cannot compile).")
+    return found
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--compile-only", action="store_true")
+    args = parser.parse_args()
+    build = ROOT / "build"
+    classes = build / "classes"
+    if classes.exists():
+        shutil.rmtree(classes)
+    classes.mkdir(parents=True)
+    javac, java = executable("javac"), executable("java")
+    version = subprocess.run([javac, "-version"], check=True, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, universal_newlines=True).stdout.strip()
+    match = re.search(r"javac (?:1\.)?(\d+)", version)
+    if not match:
+        raise SystemExit("Unrecognized compiler version: " + version)
+    major = int(match.group(1))
+    target = ["-source", "8", "-target", "8"] if major == 8 else ["--release", "8"]
+    sources = sorted((ROOT / "src" / "main" / "java").rglob("*.java"))
+    tests = sorted((ROOT / "src" / "test" / "java").rglob("*.java"))
+    subprocess.run([javac] + target + ["-encoding", "UTF-8", "-Xlint:all", "-d", str(classes)]
+                   + [str(p) for p in sources + tests], check=True)
+    for path in classes.rglob("*.class"):
+        if struct.unpack(">H", path.read_bytes()[6:8])[0] != 52:
+            raise SystemExit("Non-Java-8 bytecode: " + str(path))
+    result = {"compiler": version, "class_major": 52, "game_integration_tested": False,
+              "performance_measured": False, "tests_executed": False}
+    if not args.compile_only:
+        run = subprocess.run([java, "-Xverify:all", "-cp", str(classes),
+                              "me.movi.combatiq.CombatIQTest"], check=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             universal_newlines=True)
+        print(run.stdout, end="")
+        (build / "test-results.txt").write_text(run.stdout, encoding="utf-8")
+        subprocess.run([sys.executable, str(ROOT / "experiments" / "protocol.py"),
+                        "--self-test"], check=True)
+        result["protocol_tests_executed"] = True
+        result["tests_executed"] = True
+        result["test_output"] = run.stdout
+    artifact = build / "combatiq-kernel.jar"
+    with zipfile.ZipFile(str(artifact), "w", zipfile.ZIP_DEFLATED) as jar:
+        manifest = zipfile.ZipInfo("META-INF/MANIFEST.MF", (1980, 1, 1, 0, 0, 0))
+        jar.writestr(manifest, "Manifest-Version: 1.0\nMain-Class: me.movi.combatiq.CombatIQ\n\n")
+        for path in sorted(classes.rglob("*.class")):
+            if path.name.startswith("CombatIQTest"):
+                continue
+            entry = zipfile.ZipInfo(path.relative_to(classes).as_posix(), (1980, 1, 1, 0, 0, 0))
+            jar.writestr(entry, path.read_bytes())
+    result["artifact_sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    (build / "validation.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print("Artifact:", artifact)
+    print("This is a telemetry kernel/replay tool, not an installable Minecraft mod.")
+
+if __name__ == "__main__":
+    main()
+
+
+
+========== FILE: combatiq/experiments/protocol.py ==========
+
+#!/usr/bin/env python3
+"""Offline condition manifests and paired analysis; never alters networking or generates inputs."""
+import argparse
+import csv
+import itertools
+import json
+import math
+import random
+import statistics
+import sys
+import unittest
+
+def conditions():
+    result = []
+    for rtt, share, profile in itertools.product((40, 120, 180, 240, 300, 400),
+                                                (0.2, 0.5, 0.8),
+                                                ("stable", "mild", "variable")):
+        up, down = rtt * share, rtt * (1 - share)
+        std = (0, 0) if profile == "stable" else ((2, 2) if profile == "mild"
+                                                   else (up / 4, down / 4))
+        result.append(dict(condition="%d-u%d-%s" % (rtt, round(share * 100), profile),
+                           nominal_added_rtt_ms=rtt, upload_share=share,
+                           upload_delay_ms=round(up, 6), download_delay_ms=round(down, 6),
+                           upload_std_ms=round(std[0], 6), download_std_ms=round(std[1], 6),
+                           distribution="normal", emulator_loss_pct=0,
+                           emulator_reorder=False,
+                           note="Added delay, not measured RTT; measure achieved paths and TCP stalls."))
+    return result
+
+def paired(rows, condition):
+    groups = {}
+    for row in rows:
+        if row["condition"] != condition:
+            continue
+        cluster, strategy = row["cluster"], row["strategy"]
+        if not cluster or strategy not in ("baseline", "candidate"):
+            raise ValueError("Require named clusters and baseline/candidate strategies")
+        value = float(row["value"])
+        if not math.isfinite(value):
+            raise ValueError("Non-finite endpoint")
+        group = groups.setdefault(cluster, {})
+        if strategy in group:
+            raise ValueError("Aggregate within the randomization unit first; duplicate cluster arm")
+        group[strategy] = value
+    if len(groups) < 2 or any(set(v) != {"baseline", "candidate"} for v in groups.values()):
+        raise ValueError("Require at least two complete independent paired clusters")
+    return [v["candidate"] - v["baseline"] for _, v in sorted(groups.items())]
+
+def quantile(values, p):
+    values = sorted(values)
+    at = (len(values) - 1) * p
+    lo = int(at)
+    return values[lo] + (values[min(lo + 1, len(values) - 1)] - values[lo]) * (at - lo)
+
+def analyze(deltas, seed=731, draws=10000):
+    if len(deltas) < 2 or draws < 100:
+        raise ValueError("Insufficient paired units or draws")
+    rng = random.Random(seed)
+    n = len(deltas)
+    observed = statistics.mean(deltas)
+    bootstrap = [statistics.mean(deltas[rng.randrange(n)] for _ in range(n))
+                 for _ in range(draws)]
+    if n <= 16:
+        null = [sum(s * d for s, d in zip(signs, deltas)) / n
+                for signs in itertools.product((-1, 1), repeat=n)]
+        p = sum(abs(x) >= abs(observed) - 1e-12 for x in null) / len(null)
+        method = "exact paired label swap"
+    else:
+        hits = sum(abs(sum(rng.choice((-1, 1)) * d for d in deltas) / n)
+                   >= abs(observed) - 1e-12 for _ in range(draws))
+        p = (hits + 1) / (draws + 1)
+        method = "Monte Carlo paired label swap"
+    return dict(paired_clusters=n, mean_candidate_minus_baseline=observed,
+                bootstrap_percentile_95=[quantile(bootstrap, .025), quantile(bootstrap, .975)],
+                two_sided_randomization_p=p, randomization_method=method, seed=seed,
+                assumptions=["Independent paired randomization units; arm labels exchangeable under sharp null",
+                             "Aggregate encounters within a unit before this analysis",
+                             "One prespecified condition/endpoint; adjust multiplicity outside this tool"],
+                warning="No causal interpretation for self-selected observational strategies; small-sample CIs unstable.")
+
+class Tests(unittest.TestCase):
+    def test_matrix(self):
+        c = conditions()
+        self.assertEqual(len(c), 54)
+        self.assertEqual(len(set(x["condition"] for x in c)), 54)
+        for x in c:
+            self.assertAlmostEqual(x["upload_delay_ms"] + x["download_delay_ms"],
+                                   x["nominal_added_rtt_ms"])
+            self.assertGreaterEqual(x["upload_std_ms"], 0)
+    def test_pairing(self):
+        rows = [dict(condition="x", cluster=str(i), strategy=s, value=str(i + (s == "candidate")))
+                for i in range(3) for s in ("baseline", "candidate")]
+        self.assertEqual(paired(rows, "x"), [1, 1, 1])
+        with self.assertRaises(ValueError):
+            paired(rows + [rows[0]], "x")
+        with self.assertRaises(ValueError):
+            paired(rows[:-1], "x")
+    def test_statistics(self):
+        s = analyze([0, 0, 0], draws=100)
+        self.assertEqual(s["two_sided_randomization_p"], 1)
+        s = analyze([1, 1, 1, 1], draws=100)
+        self.assertEqual(s["two_sided_randomization_p"], .125)
+        self.assertEqual(s["bootstrap_percentile_95"], [1, 1])
+        self.assertEqual(analyze([1, -2, 3], draws=100),
+                         analyze([1, -2, 3], draws=100))
+        self.assertEqual(quantile([0, 10], .25), 2.5)
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--matrix", action="store_true")
+    mode.add_argument("--analyze", metavar="PAIRED_CSV")
+    mode.add_argument("--self-test", action="store_true")
+    parser.add_argument("--condition")
+    parser.add_argument("--seed", type=int, default=731)
+    args = parser.parse_args()
+    if args.self_test:
+        result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests))
+        sys.exit(0 if result.wasSuccessful() else 1)
+    if args.matrix:
+        print(json.dumps(dict(schema=1, conditions=conditions()), indent=2))
+    else:
+        if not args.condition:
+            parser.error("--analyze requires --condition")
+        with open(args.analyze, newline="", encoding="utf-8") as source:
+            reader = csv.DictReader(source)
+            if reader.fieldnames != ["condition", "cluster", "strategy", "value"]:
+                raise ValueError("Expected CSV header condition,cluster,strategy,value")
+            result = analyze(paired(reader, args.condition), args.seed)
+        result["condition"] = args.condition
+        print(json.dumps(result, indent=2))
+
+if __name__ == "__main__":
+    main()
+
+
+
+========== FILE: .github/workflows/combatiq.yml ==========
+
+name: CombatIQ standalone kernel
+on:
+  push:
+    branches: ['combatiq/passive-analyzer']
+    paths: ['combatiq/src/**', 'combatiq/build.py', 'combatiq/experiments/**', '.github/workflows/combatiq.yml']
+  pull_request:
+    branches: ['lean/overhaul3']
+    paths: ['combatiq/src/**', 'combatiq/build.py', 'combatiq/experiments/**', '.github/workflows/combatiq.yml']
+permissions:
+  contents: read
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['8', '17', '21']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - name: Compile and execute the Java 8 telemetry/replay tests
+        run: python3 combatiq/build.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: combatiq-java-${{ matrix.java }}
+          path: |
+            combatiq/build/combatiq-kernel.jar
+            combatiq/build/test-results.txt
+            combatiq/build/validation.json
+          if-no-files-found: warn
+
+
+
+END OF STOPPED-WORK EXPORT
