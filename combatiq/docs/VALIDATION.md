@@ -4,7 +4,11 @@
 GitHub Actions run [39460312267](https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39460312267) completed successfully on Java 8, 17 and 21 for the **earlier standalone kernel**.
 The previous result does not automatically certify these Phase III commits.
 
-## Changes requiring current CI verification
+## Phase III CI verification
+
+GitHub Actions [run 39465947527](https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39465947527) completed successfully for all three standalone jobs: Java 8, 17 and 21. Each completed the compile-and-test step. This verifies the Phase III kernel changes in CI, **not** in-game behavior.
+
+## Changes verified in standalone CI
 - Added dedicated `INBOUND` producer lane to prevent mixing receive and outbound-write callbacks.
 - Expanded per-producer tracking to four lanes.
 - Added strict event/stage checks for schema 2. Schema 1 replay remains available for historic files.
@@ -15,7 +19,7 @@ The previous result does not automatically certify these Phase III commits.
 
 ## Verified vs unverified boundaries
 - **Code committed:** see Phase III branch history.
-- **Java 8 build of this revision:** awaiting a successful workflow run; do not infer from prior CI.
+- **Java 8 build of this revision:** CI succeeded in the linked Phase III run.
 - **Minecraft injection:** not done, requires hash-verified GlideClient binary.
 - **Runtime HUD/Windows/Linux game launch:** not tested.
 - **Pika server / real user combat advantage:** not tested.
