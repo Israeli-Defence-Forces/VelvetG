@@ -12,7 +12,7 @@ import java.util.concurrent.locks.LockSupport;
  */
 public final class CombatIQ {
     private CombatIQ() {}
-    public static final int MAIN = 0, NETWORK = 1, SERVER = 2;
+    public static final int MAIN = 0, NETWORK = 1, SERVER = 2, INBOUND = 3;
     public static final int INPUT_QUEUE = 1, BINDING = 2, SAMPLE = 3,
             INTENT = 4, WRITE = 5, RECEIVE = 6, APPLY = 7, GROUND_TRUTH = 8;
     public static final int CONTEXT = 1, FORWARD_EDGE = 2, MOVEMENT_SAMPLE = 3,
@@ -54,7 +54,7 @@ public final class CombatIQ {
         private Ring(int capacity, int producer, Gate gate) {
             if (capacity < 2 || capacity > 65536 || (capacity & (capacity - 1)) != 0)
                 throw new IllegalArgumentException("capacity must be a power of two in [2,65536]");
-            if (producer < MAIN || producer > SERVER) throw new IllegalArgumentException("producer");
+            if (producer < MAIN || producer > INBOUND) throw new IllegalArgumentException("producer");
             this.producer = producer; this.gate = gate; mask = capacity - 1;
             ns = new long[capacity]; source = new long[capacity];
             session = new long[capacity]; seq = new long[capacity]; correlation = new long[capacity];
@@ -113,12 +113,42 @@ public final class CombatIQ {
         private boolean quiescent() { return !inOffer; }
     }
 
+    /** Validate declared event ownership/stage; no fabricated cross-thread order. */
+    public static boolean validEvent(Event e) {
+        if (e.producer < MAIN || e.producer > INBOUND
+                || e.type < CONTEXT || e.type > CORRECTION
+                || e.stage < INPUT_QUEUE || e.stage > GROUND_TRUTH) return false;
+        final int p = e.producer, t = e.type, st = e.stage;
+        switch (t) {
+            case CONTEXT: case MOVEMENT_SAMPLE: case LOCAL_SPRINT:
+            case FRAME: case TICK: return p == MAIN && st == SAMPLE;
+            case FORWARD_EDGE: return p == MAIN && st == INPUT_QUEUE;
+            case BINDING_CHANGE: return p == MAIN && st == BINDING;
+            case SPRINT_START: case SPRINT_STOP:
+                return p == NETWORK && st == WRITE;
+            case ATTACK: case USE_START: case USE_END:
+                return (p == MAIN && st == INTENT)
+                        || (p == NETWORK && st == WRITE);
+            case HURT: case VELOCITY:
+                return ((p == INBOUND || p == NETWORK) && st == RECEIVE)
+                        || (p == MAIN && st == APPLY);
+            case POSITION:
+                return ((p == INBOUND || p == NETWORK) && st == RECEIVE)
+                        || (p == MAIN && (st == APPLY || st == SAMPLE));
+            case CORRECTION:
+                return (p == MAIN && st == APPLY)
+                        || (p == INBOUND && st == RECEIVE);
+            case SERVER_ACCEPT: return p == SERVER && st == GROUND_TRUTH;
+            default: return false;
+        }
+    }
+
     /** Descriptive local analyzer. It intentionally makes no public-server hit claims. */
     public static final class Analyzer {
         private final boolean trustServerTruth;
-        private final long[] previousSequence = new long[3];
-        private final long[] previousNs = new long[3];
-        private final boolean[] hasPrevious = new boolean[3];
+        private final long[] previousSequence = new long[4];
+        private final long[] previousNs = new long[4];
+        private final boolean[] hasPrevious = new boolean[4];
         private boolean context, releaseOpen, releaseSampled, rawKnown, rawDown;
         private boolean localSprintKnown, localSprint, writtenSprintKnown, writtenSprint;
         private boolean complete = true;
@@ -144,7 +174,7 @@ public final class CombatIQ {
         }
 
         public void accept(Event e) {
-            if (e.producer < 0 || e.producer > 2) { invalidate(); return; }
+            if (e.producer < 0 || e.producer > INBOUND || !validEvent(e)) { invalidate(); return; }
             int p = e.producer;
             if (hasPrevious[p] && (e.sequence != previousSequence[p] + 1
                     || e.ns - previousNs[p] < 0)) {
@@ -153,7 +183,6 @@ public final class CombatIQ {
                 gaps++; invalidate();
             }
             previousSequence[p] = e.sequence; previousNs[p] = e.ns; hasPrevious[p] = true;
-            latestObservationNs = e.ns;
             if (p == MAIN && e.type == CONTEXT) {
                 boolean next = (e.flags & (FOCUSED | IN_WORLD | GAMEPLAY))
                         == (FOCUSED | IN_WORLD | GAMEPLAY);
@@ -162,15 +191,25 @@ public final class CombatIQ {
                     hasFrame = false;
                 }
                 session = e.session; context = next;
+                rawKnown = (e.flags & BINDING_DOWN) != 0;
+                rawDown = rawKnown;
+                latestObservationNs = e.ns;
                 return;
             }
             if (e.session != session) return; // retain in log; don't join across connections
+            // Drain order is not chronology: use a monotonic display watermark.
+            if (e.ns > latestObservationNs) latestObservationNs = e.ns;
             if (p == MAIN) {
                 if (e.type == FORWARD_EDGE && e.stage == INPUT_QUEUE && context && complete) {
                     if ((e.flags & SYNTHETIC) != 0) { censor(); return; }
                     boolean down = (e.flags & DOWN) != 0;
                     if (rawKnown && rawDown == down) return; // repeat, not a fresh edge
-                    rawKnown = true; rawDown = down;
+                    if (!rawKnown) {
+                        // First edge after an unknown state establishes a baseline, not a tap.
+                        rawKnown = true; rawDown = down;
+                        return;
+                    }
+                    rawDown = down;
                     if (!down) {
                         releaseOpen = true; releaseSampled = false; releaseAt = e.ns;
                     } else if (releaseOpen) {
@@ -252,7 +291,9 @@ public final class CombatIQ {
     /** Strict schema/version, explicit loss trailer, and conservative truncated-log handling. */
     public static Snapshot replay(Reader input, boolean trustServerTruth) throws IOException {
         BufferedReader reader = new BufferedReader(input);
-        if (!"# CombatIQ schema=1".equals(reader.readLine())
+        String schemaLine = reader.readLine();
+        boolean legacy = "# CombatIQ schema=1".equals(schemaLine);
+        if ((!legacy && !"# CombatIQ schema=2".equals(schemaLine))
                 || !HEADER.equals(reader.readLine())) throw new IOException("Unsupported telemetry schema");
         Analyzer a = new Analyzer(trustServerTruth);
         Event e = new Event();
@@ -263,9 +304,10 @@ public final class CombatIQ {
                 if (lossSeen) throw new IOException("Repeated loss trailer");
                 lossSeen = true;
                 String[] f = line.split(",", -1);
-                if (f.length != 5) throw new IOException("Malformed loss trailer");
+                if (f.length != (legacy ? 5 : 7))
+                    throw new IOException("Malformed loss trailer");
                 try {
-                    for (int i = 1; i < 5; i++) {
+                    for (int i = 1; i < f.length; i++) {
                         long n = Long.parseLong(f[i]);
                         if (n < 0) throw new NumberFormatException("negative loss");
                         if (n != 0) a.invalidate();
@@ -288,12 +330,13 @@ public final class CombatIQ {
                 e.y = Double.parseDouble(f[12]); e.z = Double.parseDouble(f[13]);
                 if (!Double.isFinite(e.x) || !Double.isFinite(e.y) || !Double.isFinite(e.z))
                     throw new NumberFormatException("non-finite payload");
-                if (e.producer < MAIN || e.producer > SERVER || e.sequence <= 0
+                if (e.producer < MAIN || e.producer > (legacy ? SERVER : INBOUND) || e.sequence <= 0
                         || e.type < CONTEXT || e.type > CORRECTION
                         || e.stage < INPUT_QUEUE || e.stage > GROUND_TRUTH
                         || e.flags < 0 || (e.flags & ~127) != 0)
                     throw new NumberFormatException("unknown event identifier");
             } catch (NumberFormatException ex) { throw new IOException("Invalid telemetry value", ex); }
+            if (!legacy && !validEvent(e)) throw new IOException("Invalid event/stage/producer combination");
             a.accept(e);
         }
         if (!ended || !lossSeen) a.invalidate();
@@ -309,13 +352,15 @@ public final class CombatIQ {
      */
     public static final class Session implements AutoCloseable {
         private final Gate gate = new Gate();
-        public final Ring main, network;
+        public final Ring main, network, inbound;
         private final Thread worker;
         private volatile Snapshot snapshot = new Analyzer().snapshot();
         private volatile IOException failure;
         private volatile boolean stopped;
         public Session(final Path output, int capacity) {
-            main = new Ring(capacity, MAIN, gate); network = new Ring(capacity, NETWORK, gate);
+            main = new Ring(capacity, MAIN, gate);
+            network = new Ring(capacity, NETWORK, gate); // outbound Netty write hook
+            inbound = new Ring(capacity, INBOUND, gate); // inbound decoder/receive hook
             worker = new Thread(new Runnable() {
                 public void run() { record(output); }
             }, "VelvetG-CombatIQ-recorder");
@@ -331,9 +376,10 @@ public final class CombatIQ {
             long lastPublish = System.nanoTime();
             try (BufferedWriter out = Files.newBufferedWriter(path, StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-                out.write("# CombatIQ schema=1\n"); out.write(HEADER); out.write('\n');
+                out.write("# CombatIQ schema=2\n"); out.write(HEADER); out.write('\n');
                 while (gate.accepting || !main.quiescent() || !network.quiescent()
-                        || !main.isEmpty() || !network.isEmpty()) {
+                        || !inbound.quiescent() || !main.isEmpty() || !network.isEmpty()
+                        || !inbound.isEmpty()) {
                     int count = 0;
                     for (int i = 0; i < 128 && main.poll(event); i++) {
                         analyzer.accept(event); writeEvent(out, event); count++;
@@ -341,7 +387,11 @@ public final class CombatIQ {
                     for (int i = 0; i < 128 && network.poll(event); i++) {
                         analyzer.accept(event); writeEvent(out, event); count++;
                     }
-                    if (main.dropped() + network.dropped() + main.misuse() + network.misuse() > 0)
+                    for (int i = 0; i < 128 && inbound.poll(event); i++) {
+                        analyzer.accept(event); writeEvent(out, event); count++;
+                    }
+                    if (main.dropped() + network.dropped() + inbound.dropped()
+                            + main.misuse() + network.misuse() + inbound.misuse() > 0)
                         analyzer.invalidate();
                     long now = System.nanoTime();
                     if (now - lastPublish >= 100000000L) {
@@ -349,11 +399,13 @@ public final class CombatIQ {
                     }
                     if (count == 0) LockSupport.parkNanos(1000000L);
                 }
-                if (main.dropped() + network.dropped() + main.misuse() + network.misuse() > 0)
+                if (main.dropped() + network.dropped() + inbound.dropped()
+                        + main.misuse() + network.misuse() + inbound.misuse() > 0)
                     analyzer.invalidate();
                 analyzer.finish();
                 out.write("# LOSS," + main.dropped() + "," + network.dropped() + ","
-                        + main.misuse() + "," + network.misuse() + "\n# END\n");
+                        + inbound.dropped() + "," + main.misuse() + ","
+                        + network.misuse() + "," + inbound.misuse() + "\n# END\n");
                 snapshot = analyzer.snapshot();
             } catch (IOException ex) { failure = ex; gate.accepting = false; }
             catch (RuntimeException ex) {
