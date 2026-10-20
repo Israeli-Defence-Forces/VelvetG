@@ -58,6 +58,9 @@ def main():
                              universal_newlines=True)
         print(run.stdout, end="")
         (build / "test-results.txt").write_text(run.stdout, encoding="utf-8")
+        subprocess.run([sys.executable, str(ROOT / "experiments" / "protocol.py"),
+                        "--self-test"], check=True)
+        result["protocol_tests_executed"] = True
         result["tests_executed"] = True
         result["test_output"] = run.stdout
     artifact = build / "combatiq-kernel.jar"
