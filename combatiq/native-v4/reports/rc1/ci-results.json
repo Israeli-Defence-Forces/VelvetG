@@ -1,0 +1,55 @@
+{
+  "source_commit": "d75d79e5b1d8022f904d3175145d17557073f31d",
+  "verified_at_utc": "2026-10-21",
+  "runs": [
+    {
+      "id": 39571432081,
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571432081",
+      "jobs": [
+        {
+          "name": "native-mocks (17)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571432081/job/119126304532"
+        },
+        {
+          "name": "native-mocks (21)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571432081/job/119126304679"
+        },
+        {
+          "name": "native-mocks (8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571432081/job/119126304923"
+        }
+      ]
+    },
+    {
+      "id": 39571423869,
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571423869",
+      "jobs": [
+        {
+          "name": "native-mocks (21)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571423869/job/119126280363"
+        },
+        {
+          "name": "native-mocks (8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571423869/job/119126280618"
+        },
+        {
+          "name": "native-mocks (17)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39571423869/job/119126280798"
+        }
+      ]
+    }
+  ],
+  "scope": "Hosted source/kernel/protocol/native mock tests. No private client, Minecraft launch or Windows execution."
+}

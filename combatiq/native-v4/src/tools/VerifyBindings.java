@@ -29,11 +29,19 @@ public final class VerifyBindings {
         for(byte x:MessageDigest.getInstance("SHA-256").digest(b))hash.append(String.format("%02x",x&255));
         if(!hash.toString().equals("14f0d96d1a56fb4f5c3b2233d00699525893fe5ce3dcf181e7de59120595d298"))throw new SecurityException("Unknown Minecraft binary");
         try(ZipFile z=new ZipFile(args[0])){
+            method(z,"ek","a","(Lff;)V");method(z,"ek","a","(Lio/netty/channel/ChannelHandlerContext;Lff;)V");
+            method(z,"ek","a","(Lff;[Lio/netty/util/concurrent/GenericFutureListener;)V");method(z,"ek$4","run","()V");
+            field(z,"ek$4","c","Lff;");field(z,"ek$4","e","Lek;");method(z,"ave","s","()V");method(z,"bew","bw","()V");
             method(z,"bew","d","(Z)V"); method(z,"bew","m","()V");
             method(z,"ave","aw","()V"); method(z,"ave","ax","()V");
             method(z,"ave","a","(Laxu;)V"); method(z,"ave","n","()V"); method(z,"ave","o","()V");
             for(String p:new String[]{"hm","hf","fi","gv","hz"})method(z,"bcy","a","(L"+p+";)V");
             method(z,"pk","aw","()Z");method(z,"pk","av","()Z");method(z,"pk","F","()I");method(z,"wn","bW","()Z");
+            method(z,"ave","aJ","()Z");method(z,"ave","u","()Lbcy;");method(z,"bcy","a","()Lek;");
+            field(z,"ave","f","Lbdb;");for(String f:new String[]{"s","t","u","v","w","x"})field(z,"pk",f,"D");
+            field(z,"beu","a","F");field(z,"beu","b","F");method(z,"bdb","a","(I)Lpk;");
+            method(z,"avb","i","()I");method(z,"avb","d","()Z");
+            field(z,"ave","t","Lavh;");field(z,"avh","Y","Lavb;");
             field(z,"pk","C","Z");field(z,"ave","w","Z");
             field(z,"is","a","I");field(z,"is","b","Lis$a;");
             field(z,"in","a","I");field(z,"in","b","Lin$a;");field(z,"ir","c","Lir$a;");field(z,"ja","c","I");
@@ -52,6 +60,7 @@ public final class VerifyBindings {
                 {"b","18","hm"},{"b","25","hf"},{"b","20","gv"},{"b","24","hz"},{"b","8","fi"}};
             for(String[] r:expected)if(!registry.get(r[0]).get(Integer.parseInt(r[1])).equals(r[2]))throw new IllegalStateException("Registry mismatch "+Arrays.toString(r));
         }
-        System.out.println("PASS: pinned binary, 16 method targets, packet layouts and PLAY protocol registration. Structural checks only.");
+        System.out.println("PASS: pinned binary, hook/binding method targets, packet layouts and PLAY protocol registration. Structural checks only.");
     }
 }
+

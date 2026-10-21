@@ -1,0 +1,45 @@
+{
+  "kind": "REAL_BINARY_TEMPORARY_GAME_DIRECTORY_SMOKE",
+  "windows_executed": false,
+  "minecraft_launched": false,
+  "steps": [
+    {
+      "status": "verified-no-changes",
+      "sha256": "43f3a3f9b477986bf76b8ec8cc896df3ff1cc3e294d7526e16bc15fc128a3ac9"
+    },
+    {
+      "status": "installed",
+      "sha256": "43f3a3f9b477986bf76b8ec8cc896df3ff1cc3e294d7526e16bc15fc128a3ac9",
+      "version": "VelvetG-CombatIQ-RC1"
+    },
+    {
+      "status": "already-installed",
+      "sha256": "43f3a3f9b477986bf76b8ec8cc896df3ff1cc3e294d7526e16bc15fc128a3ac9"
+    },
+    {
+      "status": "rollback-verified-no-changes"
+    },
+    {
+      "status": "rolled-back"
+    },
+    {
+      "status": "uninstalled-original-preserved"
+    }
+  ],
+  "cli_check": {
+    "schema": 1,
+    "id": "VelvetG-CombatIQ-RC1",
+    "jar_sha256": "43f3a3f9b477986bf76b8ec8cc896df3ff1cc3e294d7526e16bc15fc128a3ac9",
+    "profile_sha256": "1a9c2c2e0281facc0e4232ea7a31e2cd8369e42a820da3bdf4dddb1ef557e276",
+    "can_rollback": true,
+    "rollback": {
+      ".combatiq-rc1/rollback.jar": null,
+      ".combatiq-rc1/rollback.json": null,
+      ".combatiq-rc1/rollback.receipt.json": null
+    }
+  },
+  "tampered_artifact_refused": true,
+  "original_preserved": true,
+  "patched_jar_sha256": "43f3a3f9b477986bf76b8ec8cc896df3ff1cc3e294d7526e16bc15fc128a3ac9",
+  "passed": true
+}

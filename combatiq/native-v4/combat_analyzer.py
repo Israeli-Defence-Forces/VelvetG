@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Strict retrospective native schemas 1/2 replay. No server outcome inference."""
+"""Strict retrospective native schemas 1/2/3 replay. No server outcome inference."""
 import argparse
 import csv
 import json
+import hashlib
 import math
 from collections import Counter, defaultdict
 from pathlib import Path
 
 LEGACY = ['ns','kind','data','moveForward','packetClass']
 COLUMNS = LEGACY + ['tick','epoch','thread','sequence','entity','flags','x','y','z']
+COLUMNS3 = COLUMNS + ['connection','phase','packetId']
 OBSERVED = 'DIRECTLY_OBSERVED'
 LIMITED = 'INFERRED_WITH_LIMITATIONS'
 UNKNOWN = 'INDETERMINATE'
@@ -30,29 +32,57 @@ def distribution(values):
 
 
 def read_trace(path):
-    text = Path(path).read_text(encoding='utf-8').splitlines()
+    if Path(path).stat().st_size>268435456:raise ValueError('Recording exceeds 256 MiB offline input budget')
+    raw=Path(path).read_bytes();raw_lines=raw.splitlines(keepends=True)
+    text=raw.decode('utf-8').splitlines()
     if len(text) < 2:
         raise ValueError('Missing schema/header')
     if text[0].startswith('# CombatIQ native experimental schema 1;'):
         schema, header = 1, LEGACY
     elif text[0].startswith('# CombatIQ native experimental schema 2;'):
         schema, header = 2, COLUMNS
+    elif text[0].startswith('# CombatIQ native experimental schema 3;'):
+        schema, header = 3, COLUMNS3
     else:
         raise ValueError('Unsupported native schema')
     if next(csv.reader([text[1]])) != header:
         raise ValueError('Unrecognized columns')
     events, loss, ended, capped, trailer = [], None, False, False, False
+    filtered = None
+    segment = None;continues = None;checksum = None;data_end = None
     reasons = []
     for i,line in enumerate(text[2:], 3):
         if ended:
             raise ValueError('Data after END')
+        if line.startswith('# SEGMENT,'):
+            values=line.split(',')
+            if schema!=3 or i!=3 or len(values)!=3 or int(values[2])<0:raise ValueError('Invalid segment header')
+            segment=(values[1],int(values[2]));continue
+        if line.startswith('# DATA_SHA256,'):
+            values=line.split(',')
+            if schema!=3 or not trailer or checksum is not None or len(values)!=2:raise ValueError('Unexpected checksum')
+            checksum=values[1]
+            if hashlib.sha256(b''.join(raw_lines[:data_end])).hexdigest()!=checksum:raise ValueError('Recording data checksum mismatch')
+            continue
+        if line.startswith('# CONTINUES,'):
+            values=line.split(',')
+            if schema!=3 or not trailer or continues is not None or not segment or len(values)!=3 or values[1]!=segment[0] or int(values[2])!=segment[1]+1:raise ValueError('Invalid continuation')
+            continues=int(values[2]);continue
         if line.startswith('# LOSS,'):
+            data_end=i-1
             if loss is not None:
                 raise ValueError('Duplicate LOSS')
             loss = int(line.split(',')[1])
             if loss < 0 or len(line.split(',')) != 2:
                 raise ValueError('Invalid LOSS')
             trailer = True
+            continue
+        if line.startswith('# FILTERED,'):
+            if schema < 2 or not trailer or filtered is not None or capped:
+                raise ValueError('Unexpected FILTERED')
+            values = line.split(',')
+            if len(values) != 2 or int(values[1]) < 0: raise ValueError('Invalid FILTERED')
+            filtered = int(values[1])
             continue
         if line.startswith('# CAPPED'):
             if not trailer or capped:
@@ -72,32 +102,62 @@ def read_trace(path):
             raise ValueError('Wrong column count at %d' % i)
         row = dict(zip(header, parts))
         try:
-            for k in ('ns','kind','data') + (('tick','epoch','thread','sequence','entity','flags') if schema == 2 else ()):
+            for k in ('ns','kind','data') + (('tick','epoch','thread','sequence','entity','flags') if schema >= 2 else ()) + (('connection','phase','packetId') if schema==3 else ()):
                 row[k] = int(row[k])
-            for k in ('moveForward',) + (('x','y','z') if schema == 2 else ()):
+            for k in ('moveForward',) + (('x','y','z') if schema >= 2 else ()):
                 row[k] = float(row[k])
                 if math.isinf(row[k]):
                     raise ValueError('Infinite value')
         except ValueError as ex:
             raise ValueError('Invalid numeric row at %d' % i) from ex
-        if row['kind'] not in range(1,17 if schema == 2 else 9):
+        if row['ns'] < 0 or (schema >= 2 and (row['tick'] < 0 or row['epoch'] < 0 or row['thread'] < 0 or row['sequence'] <= 0)):
+            raise ValueError('Negative time/identity or nonpositive sequence')
+        if row['kind'] not in range(1,27 if schema==3 else 17 if schema >= 2 else 9):
             raise ValueError('Unknown event kind')
         if schema == 1:
             row.update(tick=-1,epoch=0,thread=0,sequence=len(events)+1,entity=-1,flags=0,x=math.nan,y=math.nan,z=math.nan)
         else:
-            if row['sequence'] != (events[-1]['sequence']+1 if events else 1):
+            if row['sequence'] != (events[-1]['sequence']+1 if events else row['sequence'] if segment and segment[1]>0 else 1):
                 reasons.append('SEQUENCE_GAP')
             if events and row['ns'] < events[-1]['ns']:
                 reasons.append('ENQUEUE_CLOCK_REVERSED')
-            if row['kind'] in (5,6,15) and row['data'] not in PACKETS:
+            if row['kind'] in (5,6,15,23,24,26) and row['data'] not in PACKETS:
                 reasons.append('UNKNOWN_PACKET_CODE')
+        if schema<3:row.update(connection=0,phase=0,packetId=0)
+        elif min(row['connection'],row['phase'],row['packetId'])<0:raise ValueError('Negative schema-3 identity')
         row['row'] = i
         events.append(row)
+    if segment and segment[1]>0:reasons.append('CONTINUATION_SEGMENT')
+    if continues is not None:reasons.append('NEXT_SEGMENT_REQUIRED')
+    if segment and checksum is None:reasons.append('CHECKSUM_MISSING')
+    if Path(path).name.endswith('.partial'):reasons.append('UNFINALIZED_FILE')
+    if not events: reasons.append('NO_EVENTS')
     if not ended: reasons.append('END_MISSING')
     if loss is None: reasons.append('LOSS_MISSING')
     elif loss: reasons.append('EVENT_LOSS')
     if capped: reasons.append('CAPPED')
-    return dict(schema=schema,complete=not reasons,reasons=sorted(set(reasons)),loss=loss,capped=capped,events=events)
+    return dict(schema=schema,complete=not reasons,reasons=sorted(set(reasons)),loss=loss,filtered=filtered,capped=capped,events=events,segment=segment,continues=continues,checksum=checksum)
+
+
+def read_session(paths):
+    traces=[read_trace(p) for p in paths]
+    if not traces or any(t['schema']!=3 or not t['segment'] for t in traces):raise ValueError('Require schema-3 segments')
+    traces.sort(key=lambda t:t['segment'][1])
+    if len({t['segment'][0] for t in traces})!=1 or [t['segment'][1] for t in traces]!=list(range(len(traces))):
+        raise ValueError('Mixed sessions, duplicate or missing segment')
+    if any(t['continues']!=i+1 for i,t in enumerate(traces[:-1])) or traces[-1]['continues'] is not None:
+        raise ValueError('Missing final segment or inconsistent continuation')
+    events=[];reasons=set();offset=0
+    for t in traces:
+        reasons.update(set(t['reasons'])-{'CONTINUATION_SEGMENT','NEXT_SEGMENT_REQUIRED'})
+        for e in t['events']:
+            e=dict(e);e['segment']=t['segment'][1];e['row']+=offset
+            if e['sequence']!=(events[-1]['sequence']+1 if events else 1):reasons.add('SEQUENCE_GAP')
+            if events and e['ns']<events[-1]['ns']:reasons.add('ENQUEUE_CLOCK_REVERSED')
+            events.append(e)
+        offset+=len(t['events'])+3
+    return dict(schema=3,complete=not reasons,reasons=sorted(reasons),loss=None if any(t['loss'] is None for t in traces) else sum(t['loss'] for t in traces),
+                filtered=None if any(t['filtered'] is None for t in traces) else sum(t['filtered'] for t in traces),capped=any(t['capped'] for t in traces),events=events)
 
 
 def sprint_transitions(events):
@@ -106,7 +166,7 @@ def sprint_transitions(events):
     previous = {}
     transitions = []
     for e in events:
-        key = (e['epoch'],e['thread'])
+        key = (e['epoch'],e['thread'],e['entity'])
         if e['kind'] == 10:
             stacks[key].append(e)
         elif e['kind'] == 11:
@@ -158,15 +218,15 @@ def releases(trace, transitions):
         direct = [t for t in nearby if t['evidence']==OBSERVED and t['thread']==start['thread']]
         if any(t['data']==0 for t in direct): flags.append('LOCAL_SPRINT_STOP_OBSERVED')
         if any(t['data']==1 for t in direct): flags.append('LOCAL_SPRINT_RESTART_OBSERVED')
-        attempts = [e for e in trace['events'] if trace['schema']==2 and e['kind']==5 and e['epoch']==start['epoch']
-                    and start['ns']-100_000_000<=e['ns']<=cutoff]
+        attempts = [e for e in trace['events'] if trace['schema']>=2 and e['kind']==5 and e['epoch']==start['epoch']
+                    and e['thread']==start['thread'] and start['ns']-100_000_000<=e['ns']<=cutoff]
         packet_order = [dict(row=e['row'],thread=e['thread'],code=PACKETS.get(e['data'],'LEGACY_UNDECODED')) for e in attempts]
-        if any(e['data'] in (11,12) for e in attempts) and trace['schema']==2:
+        if any(e['data'] in (11,12) for e in attempts) and trace['schema']>=2:
             flags.append('SPRINT_ACTION_ATTEMPT_OBSERVED')
         sample_gaps = [b['ns']-a['ns'] for a,b in zip(seen,seen[1:])]
         continuity_unknown = trace['schema']==1 and (not seen or any(x>150_000_000 for x in sample_gaps))
         output.append(dict(duration_evidence=UNKNOWN if continuity_unknown else state,
-                           candidate_for_tap_training=(trace['schema']==2 and end is not None and state==OBSERVED
+                           candidate_for_tap_training=(trace['schema']>=2 and end is not None and state==OBSERVED
                                and 0 < end['ns']-start['ns'] <= 250_000_000
                                and any(a['data']==13 for a in attempts)),
                            candidate_rule='Experimental filter: <=250ms release plus ATTACK attempt nearby; not an optimum',
@@ -186,7 +246,9 @@ def releases(trace, transitions):
         elif e['kind']==1:
             if pending is None: pending=e
         elif e['kind']==2:
-            if pending is not None: finish(e)
+            if pending is not None:
+                if e['thread'] == pending['thread'] and e['data'] == pending['data']: finish(e)
+                else: finish(None, 'INPUT_STREAM_CHANGED')
             elif had_down: repeated_down += 1
             had_down=True
     finish(None,'RECORDING_ENDED_BEFORE_REPRESS')
@@ -194,13 +256,14 @@ def releases(trace, transitions):
 
 
 def analyze(path):
-    trace = read_trace(path)
-    events = trace['events']
-    counts = Counter(e['kind'] for e in events)
+    trace = read_session(path) if isinstance(path,(list,tuple)) and len(path)>1 else read_trace(path[0] if isinstance(path,(list,tuple)) else path)
+    from analytics.packets import normalize,correlate
+    raw_events=trace['events'];events=normalize(trace);trace=dict(trace,events=events)
+    counts = Counter(e['kind'] for e in raw_events)
     transitions = sprint_transitions(events)
     intervals,repeats = releases(trace,transitions)
     valid_intervals = [r for r in intervals if r['evidence']==OBSERVED]
-    packets = [e for e in events if e['kind']==5 and e['data']==13] if trace['schema']==2 else []
+    packets = [e for e in events if e['kind']==5 and e['data']==13] if trace['schema']>=2 else []
     attack_relations=[]
     for a in packets:
         next_t=[t for t in transitions if t['epoch']==a['epoch'] and t['thread']==a['thread'] and t['sequence']>a['sequence'] and 0<=t['ns']-a['ns']<=100_000_000]
@@ -223,15 +286,17 @@ def analyze(path):
     attack_dt=[(b['ns']-a['ns'])/1e6 for a,b in zip(packets,packets[1:]) if b['epoch']==a['epoch'] and b['ns']>=a['ns']]
     evidence=INVALID if not trace['complete'] else OBSERVED
     packets_by_stage={str(k):dict(Counter(PACKETS.get(e['data'],'UNDECODED') for e in events if e['kind']==k)) for k in (5,6,15)}
-    return dict(schema=trace['schema'],recording=dict(evidence=evidence,complete=trace['complete'],
-                reasons=trace['reasons'],event_loss=trace['loss'],events=len(events),counts=dict(counts)),
+    from analytics import analyze_all
+    advanced = analyze_all(trace, intervals, transitions)
+    return dict(packet_correspondence=correlate(events), normalized_event_count=len(events), analyzers=advanced, schema=trace['schema'],recording=dict(evidence=evidence,complete=trace['complete'],
+                reasons=trace['reasons'],event_loss=trace['loss'],packet_filtered=trace['filtered'],events=len(raw_events),counts=dict(counts)),
                 instrumentation_diagnostics=diagnostics,
                 coverage=dict(actual_transport_write=ABSENT,server_acceptance=ABSENT,
-                              local_sprint=UNKNOWN if any(d['kind']==16 and d['code']==4 for d in diagnostics) else OBSERVED if counts[9]+counts[10]+counts[11] else UNKNOWN if trace['schema']==2 else ABSENT,
-                              attack_intent=OBSERVED if counts[13] else UNKNOWN if trace['schema']==2 else ABSENT,
-                              packet_actions=UNKNOWN if any(d['kind']==16 and d['code'] in (5,6) for d in diagnostics) else OBSERVED if trace['schema']==2 and counts[5]+counts[6]+counts[15] else UNKNOWN if trace['schema']==2 else ABSENT,
-                              connection_identity=ABSENT,
-                              focus_boundaries=OBSERVED if counts[12] else UNKNOWN if trace['schema']==2 else ABSENT),
+                              local_sprint=UNKNOWN if any(d['kind']==16 and d['code']==4 for d in diagnostics) else OBSERVED if counts[9]+counts[10]+counts[11] else UNKNOWN if trace['schema']>=2 else ABSENT,
+                              attack_intent=OBSERVED if counts[13] else UNKNOWN if trace['schema']>=2 else ABSENT,
+                              packet_actions=UNKNOWN if any(d['kind']==16 and d['code'] in (5,6) for d in diagnostics) else OBSERVED if trace['schema']>=2 and counts[5]+counts[6]+counts[15] else UNKNOWN if trace['schema']>=2 else ABSENT,
+                              connection_identity=OBSERVED if trace['schema']==3 and any(e['connection'] for e in events) else ABSENT,
+                              focus_boundaries=OBSERVED if counts[12] else UNKNOWN if trace['schema']>=2 else ABSENT),
                 wtap=dict(evidence=evidence,intervals=intervals,repeated_down_observations=repeats,
                           sampled=sum('RELEASE_SAMPLED' in r['reasons'] for r in valid_intervals),
                           unsampled=sum('RELEASE_NOT_SAMPLED' in r['reasons'] for r in valid_intervals),
@@ -239,7 +304,7 @@ def analyze(path):
                           note='Schema 1 cannot censor unrecorded focus/world changes; durations are queue-observation intervals.'),
                 sprint=dict(transitions=transitions,attack_order=attack_relations),
                 block_hit=dict(use_intents=counts[14],packet_attempts=packets_by_stage['5'],
-                               evidence=LIMITED if trace['schema']==2 else ABSENT,
+                               evidence=LIMITED if trace['schema']>=2 else ABSENT,
                                reason='Use/placement is not proof of sword blocking; no raw attack press-consumption hook'),
                 hit_select=dict(feedback_counterattack_pairs=counters,evidence=LIMITED if feedback else ABSENT,
                                 reason='Ingress is not attacker identity or server acceptance; overlapping feedback may share an attack'),
@@ -259,14 +324,29 @@ def finite_json(value):
     return value
 
 
+def human_summary(result):
+    lines=['CombatIQ retrospective observations',
+           'Recording: '+('complete' if result['recording']['complete'] else 'INVALID / incomplete'),
+           'Events: '+str(result['recording']['events'])+'; lost: '+str(result['recording']['event_loss']),
+           'Server acceptance: NOT RECORDED']
+    for name,module in result['analyzers'].items():
+        lines.append(name+': '+module['quality']+'; inferred patterns '+str(len(module['inferred'])))
+        if module['reasons']:lines.append('  '+', '.join(module['reasons']))
+    lines.append('Observed packet attempts do not establish accepted hits or an optimal interval.')
+    return '\n'.join(lines)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('recording',type=Path)
+    p.add_argument('recording',type=Path,nargs='+',help='One recording or all ordered/unordered segments of one session')
     p.add_argument('--out',type=Path)
+    p.add_argument('--format',choices=['json','text'],default='json')
     args=p.parse_args()
-    text=json.dumps(finite_json(analyze(args.recording)),indent=2,allow_nan=False,default=str)
+    result=analyze(args.recording)
+    text=json.dumps(finite_json(result),indent=2,allow_nan=False,default=str) if args.format=='json' else human_summary(result)
     if args.out:
         with args.out.open('x',encoding='utf-8') as f: f.write(text+'\n')
     else: print(text)
 
 if __name__=='__main__': main()
+

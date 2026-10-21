@@ -1,10 +1,10 @@
 name: CombatIQ native v4 source tests
 on:
   push:
-    branches: ['combatiq/phase4-sprint-correlation']
+    branches: ['combatiq/phase4-sprint-correlation', 'combatiq/phase4-hardening']
     paths: ['combatiq/native-v4/**', '.github/workflows/combatiq-native-v4.yml']
   pull_request:
-    branches: ['combatiq/phase3-native-integration']
+    branches: ['combatiq/phase3-native-integration', 'combatiq/phase4-sprint-correlation']
     paths: ['combatiq/native-v4/**', '.github/workflows/combatiq-native-v4.yml']
 permissions:
   contents: read
@@ -28,3 +28,4 @@ jobs:
         run: python3 combatiq/build.py
       - name: Native bridge mocks, replay and synthetic installer transactions
         run: python3 -m unittest discover -s combatiq/native-v4 -p 'test*.py' -v
+

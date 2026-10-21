@@ -27,6 +27,7 @@ class NativeRuntimeTests(unittest.TestCase):
             a=analyze(files[0]);self.assertTrue(a['recording']['complete'])
             self.assertEqual(a['wtap']['sampled'],1)
             self.assertEqual([t['data'] for t in a['sprint']['transitions']],[0,1])
+            self.assertEqual(a['recording']['packet_filtered'],1)
             self.assertEqual(a['packets']['5']['ATTACK'],1)
             self.assertEqual(a['packets']['5']['INTERACT'],1)
             self.assertEqual(a['packets']['6']['VELOCITY'],1)
@@ -35,6 +36,13 @@ class NativeRuntimeTests(unittest.TestCase):
             self.assertTrue(a['coverage']['actual_transport_write']=='NOT_INSTRUMENTED')
             self.assertGreaterEqual(len({t['thread'] for t in a['sprint']['transitions']}),1)
             self.assertNotIn('java.lang.Object',files[0].read_text())
+            from combat_analyzer import read_trace
+            events=read_trace(files[0])['events']
+            client={e['thread'] for e in events if e['kind'] == 4}
+            self.assertEqual(len(client),1)
+            self.assertTrue(all(e['thread'] in client for e in events if e['kind'] in (1,2,3,9,10,11,12,13,14)))
+            self.assertEqual(sum(e['kind']==12 for e in events),2)
+            self.assertEqual(sum(e['kind']==13 for e in events),1)
     def test_output_creation_and_schema(self):
         # Reflection errors must remain detectable; malformed evidence is not a success.
         from combat_analyzer import read_trace
@@ -43,3 +51,4 @@ class NativeRuntimeTests(unittest.TestCase):
             with self.assertRaises(ValueError):read_trace(p)
 
 if __name__=='__main__':unittest.main()
+

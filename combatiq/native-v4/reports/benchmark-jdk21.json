@@ -1,0 +1,169 @@
+{
+  "kind": "SYNTHETIC_CALLBACK_BATCHES_NOT_GAMEPLAY",
+  "compiler": "javac 21.0.12.1",
+  "runs": [
+    {
+      "mode": "disabled",
+      "repeat": 0,
+      "wall_seconds_including_JVM": 0.07525804000010794,
+      "child_cpu_seconds": 0.10801900000000131,
+      "timing": {
+        "mean_batch_ns": 123.549,
+        "median_batch_ns": 68,
+        "p95_batch_ns": 75,
+        "p99_batch_ns": 309,
+        "gc_collections": 0,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 0,
+      "event_loss": 0,
+      "bytes": 0
+    },
+    {
+      "mode": "disabled",
+      "repeat": 1,
+      "wall_seconds_including_JVM": 0.07720897400008653,
+      "child_cpu_seconds": 0.11215799999999965,
+      "timing": {
+        "mean_batch_ns": 116.222,
+        "median_batch_ns": 68,
+        "p95_batch_ns": 73,
+        "p99_batch_ns": 118,
+        "gc_collections": 0,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 0,
+      "event_loss": 0,
+      "bytes": 0
+    },
+    {
+      "mode": "recording",
+      "repeat": 0,
+      "wall_seconds_including_JVM": 0.2978926200000842,
+      "child_cpu_seconds": 0.5620869999999997,
+      "timing": {
+        "mean_batch_ns": 20609.361,
+        "median_batch_ns": 6716,
+        "p95_batch_ns": 9673,
+        "p99_batch_ns": 53069,
+        "gc_collections": 0,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 6003,
+      "event_loss": 0,
+      "bytes": 330835,
+      "offline_analysis_seconds": 0.0709939690000283,
+      "recording_complete": true
+    },
+    {
+      "mode": "recording",
+      "repeat": 1,
+      "wall_seconds_including_JVM": 0.28987469699995927,
+      "child_cpu_seconds": 0.5483689999999994,
+      "timing": {
+        "mean_batch_ns": 14750.572,
+        "median_batch_ns": 12077,
+        "p95_batch_ns": 20723,
+        "p99_batch_ns": 65367,
+        "gc_collections": 0,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 6003,
+      "event_loss": 0,
+      "bytes": 330835,
+      "offline_analysis_seconds": 0.06554421199984972,
+      "recording_complete": true
+    },
+    {
+      "mode": "snapshot",
+      "repeat": 0,
+      "wall_seconds_including_JVM": 0.4525636079999913,
+      "child_cpu_seconds": 0.7868790000000004,
+      "timing": {
+        "mean_batch_ns": 7873.339,
+        "median_batch_ns": 6766,
+        "p95_batch_ns": 8586,
+        "p99_batch_ns": 27697,
+        "gc_collections": 0,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 6003,
+      "event_loss": 0,
+      "bytes": 330835,
+      "offline_analysis_seconds": 0.09949701400000777,
+      "recording_complete": true
+    },
+    {
+      "mode": "snapshot",
+      "repeat": 1,
+      "wall_seconds_including_JVM": 0.3272051999999803,
+      "child_cpu_seconds": 0.6127940000000011,
+      "timing": {
+        "mean_batch_ns": 11828.788,
+        "median_batch_ns": 6826,
+        "p95_batch_ns": 10733,
+        "p99_batch_ns": 46688,
+        "gc_collections": 0,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 6003,
+      "event_loss": 0,
+      "bytes": 330835,
+      "offline_analysis_seconds": 0.06812161099992409,
+      "recording_complete": true
+    },
+    {
+      "mode": "packet-burst",
+      "repeat": 0,
+      "wall_seconds_including_JVM": 0.48588194100011606,
+      "child_cpu_seconds": 0.8133049999999984,
+      "timing": {
+        "mean_batch_ns": 57811.451,
+        "median_batch_ns": 5930,
+        "p95_batch_ns": 10082,
+        "p99_batch_ns": 36225,
+        "gc_collections": 1,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 26003,
+      "event_loss": 0,
+      "bytes": 1475769,
+      "offline_analysis_seconds": 0.710389128000088,
+      "recording_complete": true
+    },
+    {
+      "mode": "packet-burst",
+      "repeat": 1,
+      "wall_seconds_including_JVM": 0.24256631000002926,
+      "child_cpu_seconds": 0.4878950000000011,
+      "timing": {
+        "mean_batch_ns": 8183.441,
+        "median_batch_ns": 6407,
+        "p95_batch_ns": 9711,
+        "p99_batch_ns": 50569,
+        "gc_collections": 0,
+        "batches": 1000,
+        "warmup_batches": 1000
+      },
+      "serialized_rows": 16384,
+      "event_loss": 9619,
+      "bytes": 920090,
+      "offline_analysis_seconds": 0.36571362600011526,
+      "recording_complete": false
+    }
+  ],
+  "limitations": [
+    "One JVM per run; warmup is limited; timing includes nanoTime measurement overhead",
+    "Snapshot mode reads immutable data but does not render NanoVG",
+    "No frame times, FPS, GPU cost or real Minecraft allocation rate measured",
+    "Packet burst measures allowed packet observations, not full diagnostic payload mode",
+    "CPU includes startup/shutdown; loss and serialized rows include warmup"
+  ]
+}

@@ -1,0 +1,11 @@
+Fixed synthetic callback workload, 3000 timed + 1000 warmup batches/run, 3 runs/configuration.
+No NanoVG rendering, game frames/FPS, GPU, or real gameplay performance was measured.
+Producer allocation excludes writer/other threads; GC counts are JVM-wide; CPU includes JVM startup/shutdown.
+Timing instrumentation and the reflective allocation query have overhead. Cross-mode differences are not controlled causal estimates.
+
+disabled: median run p95 0.116 us, median run p99 0.200 us, producer 0.46 bytes/batch, loss [0, 0, 0], GC counts [0, 0, 0]
+enabled-idle: median run p95 0.097 us, median run p99 0.231 us, producer 0.46 bytes/batch, loss [0, 0, 0], GC counts [0, 0, 0]
+recording: median run p95 10.997 us, median run p99 30.193 us, producer 513.25 bytes/batch, loss [0, 0, 0], GC counts [1, 1, 1]
+compact-hud: median run p95 16.380 us, median run p99 66.528 us, producer 513.25 bytes/batch, loss [0, 0, 0], GC counts [1, 1, 1]
+expanded-diagnostics: median run p95 18.228 us, median run p99 69.019 us, producer 513.25 bytes/batch, loss [0, 0, 0], GC counts [1, 1, 1]
+deep-diagnostics: median run p95 13.000 us, median run p99 54.459 us, producer 513.45 bytes/batch, loss [0, 0, 0], GC counts [1, 1, 1]

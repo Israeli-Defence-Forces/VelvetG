@@ -1,0 +1,16 @@
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+test_matrix (__main__.Tests.test_matrix) ... ok
+test_pairing (__main__.Tests.test_pairing) ... ok
+test_statistics (__main__.Tests.test_statistics) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.003s
+
+OK
+PASS: 60 assertions; Java 21.0.12.1
+Scope: telemetry kernel, concurrency, replay and file lifecycle. No game/FPS validation.
+Artifact: /workspace/work/VelvetG/combatiq/build/combatiq-kernel.jar
+This is a telemetry kernel/replay tool, not an installable Minecraft mod.

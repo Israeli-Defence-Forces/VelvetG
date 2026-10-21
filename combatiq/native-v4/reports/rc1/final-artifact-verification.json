@@ -1,0 +1,8 @@
+{
+  "zip_sha256": "b9eb3d01e0b1d1d45f2176e549853b1575d2bc6502e172ba4223bfef7c8b1926",
+  "zip_bytes": 36121236,
+  "repeated_zip_identical": true,
+  "standalone_verifier": "PASS: all 26 payload artifacts verified; Minecraft runtime remains UNVERIFIED",
+  "sha256sum_artifacts_checked": 28,
+  "tampered_artifact_refused": true
+}

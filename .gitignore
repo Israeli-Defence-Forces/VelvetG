@@ -11,3 +11,15 @@ overhaul/work/
 overhaul/dist/
 !overhaul/tools/
 !overhaul/tools/**
+
+
+combatiq/build/
+combatiq/native-v4/build-v4/
+!combatiq/native-v4/src/tools/
+!combatiq/native-v4/src/tools/**
+
+!combatiq/native-v4/integration-src/tools/
+!combatiq/native-v4/integration-src/tools/**
+
+/.mixin.out/
+/logs/
