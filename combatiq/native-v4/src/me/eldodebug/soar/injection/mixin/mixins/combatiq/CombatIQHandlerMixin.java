@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * exceptions do not reach RETURN. No own-hit confirmation is inferred. */
 @Mixin(targets="bcy", remap=false)
 public abstract class CombatIQHandlerMixin {
-    @Inject(method={"a(Lhm;)V", "a(Lhf;)V", "a(Lfi;)V", "a(Lgv;)V", "a(Lhz;)V"}, at=@At("RETURN"), require=5)
+    @Inject(method={"a(Lhm;)V", "a(Lhf;)V", "a(Lfi;)V", "a(Lgv;)V", "a(Lhz;)V"}, at=@At("RETURN"), require=0)
     private void combatiq$return(@Coerce Object packet, CallbackInfo ci) { CombatIQNative.onHandlerReturn(packet); }
 }
+

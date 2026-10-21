@@ -35,6 +35,13 @@ class NativeRuntimeTests(unittest.TestCase):
             self.assertTrue(a['coverage']['actual_transport_write']=='NOT_INSTRUMENTED')
             self.assertGreaterEqual(len({t['thread'] for t in a['sprint']['transitions']}),1)
             self.assertNotIn('java.lang.Object',files[0].read_text())
+            from combat_analyzer import read_trace
+            events=read_trace(files[0])['events']
+            client={e['thread'] for e in events if e['kind'] == 4}
+            self.assertEqual(len(client),1)
+            self.assertTrue(all(e['thread'] in client for e in events if e['kind'] in (1,2,3,9,10,11,12,13,14)))
+            self.assertEqual(sum(e['kind']==12 for e in events),2)
+            self.assertEqual(sum(e['kind']==13 for e in events),1)
     def test_output_creation_and_schema(self):
         # Reflection errors must remain detectable; malformed evidence is not a success.
         from combat_analyzer import read_trace
@@ -43,3 +50,4 @@ class NativeRuntimeTests(unittest.TestCase):
             with self.assertRaises(ValueError):read_trace(p)
 
 if __name__=='__main__':unittest.main()
+

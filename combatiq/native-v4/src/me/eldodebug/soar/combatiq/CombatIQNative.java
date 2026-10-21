@@ -35,6 +35,9 @@ public final class CombatIQNative {
     private static long sequence;
     private static volatile long epoch;
     private static volatile boolean active;
+    // Owned exclusively by the thread established by the client tick bridge.
+    // Packet producers only touch the bounded ring and volatile publications.
+    private static volatile Thread clientThread;
     private static Object previousPlayer;
     private static int previousContext = -1;
     private static Field focus;
@@ -112,7 +115,7 @@ public final class CombatIQNative {
     }
 
     public static void onContextPoint() {
-        if (!ENABLED) return;
+        if (!ENABLED || Thread.currentThread() != clientThread) return;
         try {
             initializeMinecraft();
             Object mc = minecraftGet.invoke(null, NO_ARGS);
@@ -148,11 +151,14 @@ public final class CombatIQNative {
 
     public static void onPlayerPoint(Object instance, int stage) {
         if (!ENABLED) return;
-        onContextPoint();
-        if (!active) return;
+        // Reject foreign threads/entities BEFORE any mutable context observation.
+        if (Thread.currentThread() != clientThread || instance == null) return;
         try {
+            initializeMinecraft();
             Object mc = minecraftGet.invoke(null, NO_ARGS);
             if (instance != player.get(mc)) return;
+            onContextPoint();
+            if (!active) return;
             if (sprint == null) {
                 Class<?> owner = Class.forName("pk");
                 sprint = owner.getDeclaredMethod("aw");
@@ -179,16 +185,18 @@ public final class CombatIQNative {
 
     public static void onAttackIntent() {
         if (!ENABLED) return;
+        if (Thread.currentThread() != clientThread) return;
         onContextPoint();
         if (active) add(13, 0, Float.NaN, null);
     }
     public static void onUseIntent() {
         if (!ENABLED) return;
+        if (Thread.currentThread() != clientThread) return;
         onContextPoint();
         if (active) add(14, 0, Float.NaN, null);
     }
     public static void onHandlerReturn(Object packet) {
-        if (ENABLED && active) PacketProbe.capture(packet, 15);
+        if (ENABLED && active) safeCapture(packet, 15);
     }
 
     /** Keyboard dispatch hook. Only the default W key is captured; never record chat. */
@@ -234,6 +242,13 @@ public final class CombatIQNative {
 
     public static void onClientTick() {
         if (!ENABLED) return;
+        // This bootstrap must only be called by the Minecraft client-tick bridge.
+        if (clientThread == null) {
+            synchronized (GATE) {
+                if (clientThread == null) clientThread = Thread.currentThread();
+            }
+        }
+        if (Thread.currentThread() != clientThread) return;
         onContextPoint();
         if (!active) return;
         ++ticks;
@@ -245,16 +260,21 @@ public final class CombatIQNative {
     /** Pre-send callback can be cancelled later; explicitly NOT a confirmed socket write. */
     public static void onSendAttempt(Object packet) {
         if (!ENABLED || packet == null || !active) return;
-        PacketProbe.capture(packet, SEND_ATTEMPT);
+        safeCapture(packet, SEND_ATTEMPT);
     }
     /** Pre-filter receive; packet may be cancelled before it reaches the main thread. */
     public static void onInboundBeforeFilter(Object packet) {
         if (!ENABLED || packet == null || !active) return;
-        PacketProbe.capture(packet, RECEIVE_BEFORE_FILTER);
+        safeCapture(packet, RECEIVE_BEFORE_FILTER);
+    }
+
+    private static void safeCapture(Object packet, int stage) {
+        try { PacketProbe.capture(packet, stage); }
+        catch (Throwable failure) { diagnostic(5, failure); }
     }
 
     private static boolean gameplay() {
-        if (!ENABLED) return false;
+        if (!ENABLED || Thread.currentThread() != clientThread) return false;
         onContextPoint();
         return active;
     }
@@ -356,3 +376,4 @@ public final class CombatIQNative {
     public static String status() { return status; }
     public static boolean enabled() { return ENABLED; }
 }
+

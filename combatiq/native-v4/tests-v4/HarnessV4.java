@@ -22,8 +22,18 @@ public class HarnessV4 {
    CombatIQNative.onInboundBeforeFilter(new hm());CombatIQNative.onInboundBeforeFilter(new hf());
   }});network.start();network.join();
   CombatIQNative.onHandlerReturn(new hf());
-  ave.SINGLETON.m=new Object();CombatIQNative.onContextPoint();
+  ave.SINGLETON.m=new Object();
+  Thread server=new Thread(new Runnable(){public void run(){
+   CombatIQNative.onPlayerPoint(new bew(),1);
+   CombatIQNative.onContextPoint();
+   CombatIQNative.onAttackIntent();
+   CombatIQNative.onMovementSample(new bev());
+   CombatIQNative.onClientTick();
+  }}, "Integrated Server");server.start();server.join();
+  // No foreign callback may publish the changed GUI context.
+  CombatIQNative.onContextPoint();
   org.lwjgl.input.Keyboard.key=33;CombatIQNative.onKeyboardDispatch();
   System.out.println("PASS: native hook harness finished; JVM shutdown drains file. No Minecraft/Mixin application.");
  }
 }
+
