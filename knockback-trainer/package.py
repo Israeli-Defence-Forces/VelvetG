@@ -19,7 +19,7 @@ def main():
  for f in ROOT.rglob('*'):
   if f.is_file() and not any(x in f.relative_to(ROOT).parts for x in ('build','__pycache__','reports')) and f.suffix in ('.py','.java','.md'):
    entries['source/knockback-trainer/'+f.relative_to(ROOT).as_posix()]=f.read_bytes()
- for name in ('build_v4.py','install_release.py','test_native_gui_contract.py'):
+ for name in ('build_v4.py','install_release.py','test_native_gui_contract.py','release_bundle.py'):
   entries['source/combatiq/native-v4/'+name]=(ROOT.parent/'combatiq/native-v4'/name).read_bytes()
  content=dict(version='Knockback Trainer RC1',source_commit=build['source_commit'],minecraft_runtime_validated=False,sha256={n:sha(b) for n,b in sorted(entries.items())})
  entries['CONTENTS.json']=(json.dumps(content,indent=2)+'\n').encode();pin=sha(entries['CONTENTS.json'])
