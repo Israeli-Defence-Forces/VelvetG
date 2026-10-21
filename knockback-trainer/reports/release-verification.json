@@ -1,0 +1,9 @@
+{
+  "zip_sha256": "8d9f33ce2e0bf00eedb5e504f74f3adb86d683aa4f9e8e99db07d0d0e2060304",
+  "dropbox_content_hash": "272bc42843e8d0bd16361a3d850200fa7c493b763a2641ffc7a8b133861cc674",
+  "bytes": 36161235,
+  "identical_repeat_archive": true,
+  "all_payload_and_checksum_entries_verified": true,
+  "tamper_rejected": true,
+  "minecraft_runtime_validated": false
+}
