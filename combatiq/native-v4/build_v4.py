@@ -29,7 +29,10 @@ def verify(v3, out, classes):
         assert new-old==expected-old
         assert not old-new
         changed={n for n in old if a.read(n)!=b.read(n)}
-        assert changed=={'mixins.soar.json',BRIDGE+'CombatIQNative.class',BRIDGE+'CombatIQNative$1.class',BRIDGE+'CombatIQNative$2.class'},changed
+        allowed=(expected & old) | {'mixins.soar.json'}
+        assert changed <= allowed, ('Unrelated original entry changed', changed-allowed)
+        assert BRIDGE+'CombatIQNative.class' in changed, 'Native bridge was not replaced'
+        assert all(b.read(n)==(classes/n).read_bytes() for n in expected), 'Compiled class mismatch'
         assert b.testzip() is None
         for n in expected:
             raw=b.read(n)
@@ -48,7 +51,9 @@ def main():
     p.add_argument('--v3',type=Path,required=True)
     p.add_argument('--minecraft',type=Path,required=True)
     p.add_argument('--out',type=Path,required=True)
+    p.add_argument('--native-module',action='store_true',help='Experimental native HUD adapter; live baseline validation required')
     a=p.parse_args()
+    if a.native_module: ADDED_MIXINS.append('CombatIQModuleMixin')
     if digest(a.v3)!=V3: sys.exit('REFUSED: expected exact v3 JAR hash')
     if a.out.exists(): sys.exit('REFUSED: output already exists')
     java=shutil.which('java');javac=shutil.which('javac')
@@ -60,6 +65,7 @@ def main():
     if classes.exists(): shutil.rmtree(classes)
     classes.mkdir()
     sources=[x for x in (ROOT/'src').rglob('*.java') if x.name!='PatchMixins.java']
+    if a.native_module: sources.extend((ROOT/'native-module').rglob('*.java'))
     subprocess.run([javac,'-proc:none']+flags+['-cp',str(a.v3),'-d',str(classes)]+[str(x) for x in sources],check=True)
     cp=str(classes)+os.pathsep+str(a.v3)
     subprocess.run([java,'-Xverify:all','-cp',cp,'tools.VerifyBindings',str(a.minecraft)],check=True)
@@ -90,3 +96,4 @@ def main():
         if tmp.exists():tmp.unlink()
 
 if __name__=='__main__': main()
+

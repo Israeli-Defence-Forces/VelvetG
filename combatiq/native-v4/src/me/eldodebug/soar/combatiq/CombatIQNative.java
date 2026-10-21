@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class CombatIQNative {
     private CombatIQNative() {}
     private static final Object[] NO_ARGS = new Object[0];
-    private static final boolean ENABLED = Boolean.getBoolean("velvet.combatiq.enabled");
+    private static volatile boolean ENABLED = Boolean.getBoolean("velvet.combatiq.enabled");
     private static final int CAPACITY = 16384;
     private static final long[] TIME = new long[CAPACITY], SEQ = new long[CAPACITY],
         EPOCH = new long[CAPACITY], THREAD = new long[CAPACITY], TICK_ID = new long[CAPACITY];
@@ -57,18 +57,62 @@ public final class CombatIQNative {
     private static volatile long tail, head, dropped, ticks;
     private static volatile boolean running = true;
     private static volatile boolean recordable = true;
-    private static final long MAX_ROWS = 150000L; // bounded opt-in recording
+    private static volatile boolean capped;
+    private static final long MAX_ROWS = Math.max(1, Math.min(150000L, Long.getLong("velvet.combatiq.maxRows", 150000L))); // bounded opt-in recording
     private static volatile String status = "CombatIQ: initializing";
     private static final AtomicBoolean starting = new AtomicBoolean();
+    private static final AtomicBoolean shutdownRegistered = new AtomicBoolean();
+    private static volatile Thread recorderThread;
+    private static volatile boolean startRequested;
+    private static long releaseAt;
+    private static double lastReleaseMs = Double.NaN;
+    private static volatile String lastAction = "No action observation";
+    public static final class Snapshot {
+        public final String status, sprint, lastRelease, action, health;
+        public final long lost;
+        Snapshot(String status, String sprint, String lastRelease, String action, long lost) {
+            this.status=status; this.sprint=sprint; this.lastRelease=lastRelease;
+            this.action=action; this.lost=lost; this.health="Lost events: " + lost;
+        }
+    }
+    private static volatile Snapshot snapshot = new Snapshot("CombatIQ off", "Sprint unknown", "Release unknown", "No action observation", 0);
+    public static Snapshot snapshot() { return snapshot; }
+
+    /** GUI/client control is asynchronous: never joins or writes files. */
+    public static void setEnabled(boolean value) {
+        synchronized (GATE) {
+            if (value == ENABLED) return;
+            ENABLED = value;
+            if (value) startRequested = true;
+            else {
+                startRequested = false; recordable = false; running = false;
+                status = "CombatIQ stopping";
+                snapshot = new Snapshot("CombatIQ off", "Sprint unknown", "Release unknown", "No action observation", dropped);
+            }
+        }
+    }
+
+    private static void beginRequested() {
+        if (!startRequested || starting.get()) return;
+        synchronized (GATE) {
+            if (!startRequested || starting.get()) return;
+            head=tail=sequence=dropped=ticks=stopAt=0;
+            epoch++; previousContext=-1; previousPlayer=null; sprintKnown=false;
+            releaseAt=0; lastReleaseMs=Double.NaN; lastAction="No action observation";
+            otherHookFailure.set(false); sampleHookSeen.set(false); sampleHookFailure.set(false);
+            previousForwardCode=Integer.MIN_VALUE;
+            running=true; recordable=true; capped=false; startRequested=false;
+        }
+    }
     private static final int KEY_UP = 1, KEY_DOWN = 2, SAMPLE = 3, TICK = 4,
         SEND_ATTEMPT = 5, RECEIVE_BEFORE_FILTER = 6, SAMPLE_HOOK_SEEN = 7, SAMPLE_HOOK_FAILURE = 8;
     private static final AtomicBoolean otherHookFailure = new AtomicBoolean();
     private static final AtomicBoolean sampleHookSeen = new AtomicBoolean();
     private static final AtomicBoolean sampleHookFailure = new AtomicBoolean();
     private static volatile boolean reflectReady;
-    private static Method minecraftGet, bindingDown;
+    private static Method minecraftGet, bindingDown, bindingCode;
     private static Field settings, forward, screen, player, forwardFloat;
-    private static final int DEFAULT_FORWARD_KEY = 17; // LWJGL Keyboard.KEY_W
+    private static int previousForwardCode = Integer.MIN_VALUE;
     private static Method getEventKey, getEventKeyState;
 
     private static void startup() {
@@ -78,13 +122,16 @@ public final class CombatIQNative {
         }, "VelvetG-CombatIQ-native-recorder");
         t.setDaemon(true);
         t.setPriority(Thread.MIN_PRIORITY);
-        t.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+        recorderThread=t;
+        if (shutdownRegistered.compareAndSet(false, true)) Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override public void run() {
-                running = false;
-                try { t.join(2000L); } catch (InterruptedException ignored) { }
+                synchronized (GATE) { recordable=false; running = false; }
+                Thread writer=recorderThread;
+                try { if (writer != null) writer.join(2000L); }
+                catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
             }
         }, "VelvetG-CombatIQ-shutdown"));
+        t.start();
     }
 
     private static void add(int kind, int data, float motion, String clazz) {
@@ -96,12 +143,17 @@ public final class CombatIQNative {
     static void emit(int kind, int data, float motion, String clazz,
                      int entity, int flags, double x, double y, double z) {
         if (!ENABLED || !recordable) return;
-        startup();
+        try { startup(); }
+        catch (Throwable failure) {
+            recordable = false; running = false;
+            status = "CombatIQ startup failed: " + failure.getClass().getSimpleName();
+            return;
+        }
         synchronized (GATE) {
             if (!recordable) return;
             long ns = System.nanoTime();
             if (stopAt == 0) stopAt = ns + DURATION_NS;
-            if (ns - stopAt >= 0) { recordable = false; running = false; return; }
+            if (ns - stopAt >= 0) { capped=true; recordable = false; running = false; return; }
             long ordinal = ++sequence;
             if (head - tail >= CAPACITY) { dropped++; return; }
             int i = (int)head & (CAPACITY - 1);
@@ -111,6 +163,8 @@ public final class CombatIQNative {
             TICK_ID[i] = ticks; ENTITY[i] = entity; FLAGS[i] = flags;
             X[i] = x; Y[i] = y; Z[i] = z;
             head++;
+            if (kind==5 && (data==11 || data==12 || data==13))
+                lastAction = data==11 ? "START sprint attempt" : data==12 ? "STOP sprint attempt" : "ATTACK attempt";
         }
     }
 
@@ -124,7 +178,7 @@ public final class CombatIQNative {
                 | (focus.getBoolean(mc) ? 4 : 0);
             boolean changed = local != previousPlayer;
             boolean boundary = changed || flags != previousContext;
-            if (boundary) { epoch++; previousPlayer = local; sprintKnown = false; }
+            if (boundary) { epoch++; previousPlayer = local; sprintKnown = false; releaseAt=0; }
             active = flags == 7;
             contextFlags = flags;
             if (boundary) {
@@ -199,7 +253,7 @@ public final class CombatIQNative {
         if (ENABLED && active) safeCapture(packet, 15);
     }
 
-    /** Keyboard dispatch hook. Only the default W key is captured; never record chat. */
+    /** Keyboard event proxy for the current forward binding; never record chat. */
     public static void onKeyboardDispatch() {
         if (!ENABLED || !gameplay()) return;
         try {
@@ -209,11 +263,23 @@ public final class CombatIQNative {
                 getEventKeyState = keyboard.getMethod("getEventKeyState");
             }
             int key = ((Integer)getEventKey.invoke(null, NO_ARGS)).intValue();
-            // Until a runtime mapping probe can verify remapped forward-key codes,
-            // only default W is supported, and status says so.
-            if (key != DEFAULT_FORWARD_KEY) return;
-            add(((Boolean)getEventKeyState.invoke(null, NO_ARGS)).booleanValue() ? KEY_DOWN : KEY_UP, key, Float.NaN, null);
-        } catch (Throwable ignored) { /* observational hook cannot break game */ }
+            initializeBinding();
+            Object binding = forward.get(settings.get(minecraftGet.invoke(null, NO_ARGS)));
+            int code = ((Integer)bindingCode.invoke(binding, NO_ARGS)).intValue();
+            if (previousForwardCode != Integer.MIN_VALUE && code != previousForwardCode) {
+                epoch++; sprintKnown = false;
+                add(12, active ? 1 : 0, Float.NaN, null);
+            }
+            previousForwardCode = code;
+            // Negative codes are mouse bindings, not keyboard events. Abstain.
+            if (code <= 0 || key != code) return;
+            boolean down=((Boolean)getEventKeyState.invoke(null, NO_ARGS)).booleanValue();
+            if (!down && releaseAt==0) releaseAt=System.nanoTime();
+            else if (down && releaseAt!=0) {
+                lastReleaseMs=(System.nanoTime()-releaseAt)/1000000.0; releaseAt=0;
+            }
+            add(down ? KEY_DOWN : KEY_UP, key, Float.NaN, null);
+        } catch (Throwable failure) { diagnostic(7, failure); }
     }
 
     /** Called after the original SnapTap movement callback. Receives the target's this.
@@ -241,16 +307,19 @@ public final class CombatIQNative {
     }
 
     public static void onClientTick() {
-        if (!ENABLED) return;
         // This bootstrap must only be called by the Minecraft client-tick bridge.
         if (clientThread == null) {
             synchronized (GATE) {
                 if (clientThread == null) clientThread = Thread.currentThread();
             }
         }
-        if (Thread.currentThread() != clientThread) return;
+        if (Thread.currentThread() != clientThread || !ENABLED) return;
+        beginRequested();
         onContextPoint();
-        if (!active) return;
+        snapshot = new Snapshot(status, sprintKnown ? (lastSprint ? "Sprint on" : "Sprint off") : "Sprint unknown",
+            Double.isNaN(lastReleaseMs) ? "Release unknown" : "Last release " + Math.round(lastReleaseMs) + " ms",
+            lastAction, dropped);
+        if (!active || !recordable) return;
         ++ticks;
         try { onPlayerPoint(player.get(minecraftGet.invoke(null, NO_ARGS)), 0); }
         catch (Throwable failure) { diagnostic(4, failure); }
@@ -278,17 +347,26 @@ public final class CombatIQNative {
         onContextPoint();
         return active;
     }
-    private static synchronized void initReflection(Object input) throws Exception {
-        if (reflectReady) return;
+    private static void initializeBinding() throws Exception {
+        if (bindingCode != null) return;
         Object mc = minecraftGet.invoke(null, NO_ARGS);
         Field options = mc.getClass().getDeclaredField("t"); options.setAccessible(true);
         Object opts = options.get(mc);
         Field key = opts.getClass().getDeclaredField("Y"); key.setAccessible(true);
         Object kb = key.get(opts);
         Method down = kb.getClass().getDeclaredMethod("d"); down.setAccessible(true);
+        Method code = kb.getClass().getDeclaredMethod("i"); code.setAccessible(true);
+        if (down.getReturnType() != boolean.class || code.getReturnType() != int.class)
+            throw new NoSuchMethodException("binding signatures");
+        settings = options; forward = key; bindingDown = down; bindingCode = code;
+    }
+
+    private static void initReflection(Object input) throws Exception {
+        if (reflectReady) return;
+        initializeBinding();
         Field mf = inheritedField(input.getClass(), "b");
         if (mf.getType() != float.class) throw new NoSuchFieldException("float movement b");
-        settings = options; forward = key; bindingDown = down; forwardFloat = mf;
+        forwardFloat = mf;
         reflectReady = true;
     }
 
@@ -306,7 +384,8 @@ public final class CombatIQNative {
     private static void record() {
         BufferedWriter out = null;
         try {
-            Path folder = Paths.get(System.getProperty("user.home"), "VelvetG-CombatIQ");
+            Path folder = Paths.get(System.getProperty("velvet.combatiq.exportDir",
+                Paths.get(System.getProperty("user.home"), "VelvetG-CombatIQ").toString()));
             Files.createDirectories(folder);
             String when = new SimpleDateFormat("yyyyMMdd-HHmmss-SSS").format(new Date());
             Path csv = folder.resolve("combatiq-native-" + when + ".csv");
@@ -319,7 +398,7 @@ public final class CombatIQNative {
             long rows = 0L, bytes = 0L;
             while (running || head != tail) {
                 if (stopAt != 0 && System.nanoTime() - stopAt >= 0) {
-                    recordable = false; running = false;
+                    capped=true; recordable = false; running = false;
                 }
                 long timestamp, order = 0, ep = 0, thread = 0, tick = 0;
                 int type, value, entity = -1, flags = 0; float motion; String name;
@@ -341,16 +420,18 @@ public final class CombatIQNative {
                         + (name == null ? "" : name) + "," + tick + "," + ep + "," + thread
                         + "," + order + "," + entity + "," + flags + "," + x + "," + y + "," + z + "\n";
                     if (bytes + row.length() > FILE_BYTES - 512) {
-                        recordable = false; running = false;
+                        capped=true; recordable = false; running = false;
                         synchronized (GATE) { dropped += head - tail + 1; tail = head; }
                         break;
                     }
                     out.write(row); bytes += row.length();
                     rows++;
                     if (rows >= MAX_ROWS) {
-                        recordable = false;
+                        capped=true; recordable = false;
                         running = false;
                         status = "CombatIQ recording capped; restart for a new capture";
+                        synchronized (GATE) { dropped += head - tail; tail = head; }
+                        break;
                     }
                 } else {
                     try { Thread.sleep(12); } catch (InterruptedException ignored) { }
@@ -362,15 +443,22 @@ public final class CombatIQNative {
                 }
             }
             out.write("# LOSS," + dropped + "\n");
-            if (!recordable) out.write("# CAPPED recorder row/duration/size limit reached\n");
+            if (capped) out.write("# CAPPED recorder row/duration/size limit reached\n");
             out.write("# END\n");
             out.flush();
+            status = capped ? "CombatIQ capped; toggle recording for a new capture" : "CombatIQ stopped cleanly";
         } catch (Throwable ex) {
             status = "CombatIQ recorder stopped: " + ex.getClass().getSimpleName();
         } finally {
             running = false; recordable = false;
             if (out != null) try { out.close(); } catch (IOException ignored) {}
+            starting.set(false);
         }
+    }
+
+    public static void reportPacketFailure(int code) {
+        if (otherHookFailure.compareAndSet(false, true))
+            emit(16, code, Float.NaN, null, -1, 0, Double.NaN, Double.NaN, Double.NaN);
     }
 
     public static String status() { return status; }

@@ -65,7 +65,7 @@ public final class PacketProbe {
         if (packet == null) return;
         Layout l = LAYOUTS.get(packet.getClass());
         if (l.family == 0) return;
-        if (l.family < 0) { CombatIQNative.emit(16, 5, Float.NaN, null, -1, 0, Double.NaN, Double.NaN, Double.NaN); return; }
+        if (l.family < 0) { CombatIQNative.reportPacketFailure(5); return; }
         try {
             int code;
             if (l.family <= 3) {
@@ -82,7 +82,8 @@ public final class PacketProbe {
             if (l.family == 4) a = l.action.getInt(packet);
             CombatIQNative.emit(stage, code, Float.NaN, l.name, entity, 0, a, b, c);
         } catch (Throwable failure) {
-            CombatIQNative.emit(16, 6, Float.NaN, null, -1, 0, Double.NaN, Double.NaN, Double.NaN);
+            CombatIQNative.reportPacketFailure(6);
         }
     }
 }
+

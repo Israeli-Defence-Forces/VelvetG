@@ -34,6 +34,8 @@ public final class VerifyBindings {
             method(z,"ave","a","(Laxu;)V"); method(z,"ave","n","()V"); method(z,"ave","o","()V");
             for(String p:new String[]{"hm","hf","fi","gv","hz"})method(z,"bcy","a","(L"+p+";)V");
             method(z,"pk","aw","()Z");method(z,"pk","av","()Z");method(z,"pk","F","()I");method(z,"wn","bW","()Z");
+            method(z,"avb","i","()I");method(z,"avb","d","()Z");
+            field(z,"ave","t","Lavh;");field(z,"avh","Y","Lavb;");
             field(z,"pk","C","Z");field(z,"ave","w","Z");
             field(z,"is","a","I");field(z,"is","b","Lis$a;");
             field(z,"in","a","I");field(z,"in","b","Lin$a;");field(z,"ir","c","Lir$a;");field(z,"ja","c","I");
@@ -55,3 +57,4 @@ public final class VerifyBindings {
         System.out.println("PASS: pinned binary, 16 method targets, packet layouts and PLAY protocol registration. Structural checks only.");
     }
 }
+
