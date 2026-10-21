@@ -1,0 +1,29 @@
+name: Knockback Trainer
+on:
+  push:
+    branches: ['trainer/native-knockback']
+    paths: ['knockback-trainer/**', '.github/workflows/knockback-trainer.yml']
+  pull_request:
+    branches: ['combatiq/phase4-hardening']
+    paths: ['knockback-trainer/**', '.github/workflows/knockback-trainer.yml']
+permissions:
+  contents: read
+jobs:
+  trainer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['8', '17', '21']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - run: python3 -m unittest discover -s knockback-trainer -p 'test*.py' -v
+      - run: python3 -m unittest discover -s combatiq/native-v4 -p 'test*.py' -v
+      - run: python3 combatiq/build.py
