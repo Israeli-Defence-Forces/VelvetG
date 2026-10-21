@@ -1,0 +1,11 @@
+{
+  "client_sha256": "7949d73d9be9eb74b662b2844faee2939c0463222c01b4a89378f19ddaa8bbc7",
+  "exact_v3_baseline": true,
+  "java": "openjdk version \"1.8.0_504\"\nOpenJDK Runtime Environment (Temurin)(build 1.8.0_504-b01)\nOpenJDK 64-Bit Server VM (Temurin)(build 25.504-b01, mixed mode)",
+  "transformation_passed": true,
+  "minecraft_launched": false,
+  "full_client_mixins_applied": false,
+  "stdout": "[08:29:26] [main/INFO]: SpongePowered MIXIN Subsystem Version=0.7.11 Source=file:/tmp/tmp5l5ztd85/mixin-library.jar Service=LaunchWrapper Env=UNKNOWN\n[08:29:26] [main/INFO]: FML platform manager could not load class cpw.mods.fml.relauncher.CoreModManager. Proceeding without FML support.\n[08:29:27] [main/ERROR]: MixinBootstrap.doInit() called during a tweak constructor!\n[08:29:27] [main/INFO]: Compatibility level set to JAVA_8\n[08:29:27] [main/WARN]: @Mixin target ave is public in mixins.combatiq.integration.json:combatiq.CombatIQMinecraftMixin and should be specified in value\n[08:29:27] [main/WARN]: @Mixin target bew is public in mixins.combatiq.integration.json:combatiq.CombatIQPlayerMixin and should be specified in value\n[08:29:27] [main/WARN]: @Mixin target bcy is public in mixins.combatiq.integration.json:combatiq.CombatIQHandlerMixin and should be specified in value\n[08:29:27] [main/WARN]: @Mixin target ek is public in mixins.combatiq.integration.json:combatiq.CombatIQNetworkMixin and should be specified in value\nINJECTIONS ave calls=9 methods=[ax()V, a(Laxu;)V, aw()V, n()V, o()V, s()V]\nAPPLIED ave native_calls=6 bytes=64610\nINJECTIONS bew calls=5 methods=[d(Z)V, m()V, bw()V]\nAPPLIED bew native_calls=5 bytes=14472\nINJECTIONS bcy calls=9 methods=[a(Lhf;)V, a(Lhm;)V, a(Lgv;)V, a(Lfi;)V, a(Lhz;)V]\nAPPLIED bcy native_calls=1 bytes=39615\nINJECTIONS ek calls=4 methods=[a(Lff;[Lio/netty/util/concurrent/GenericFutureListener;)V, a(Lio/netty/channel/ChannelHandlerContext;Lff;)V, a(Lff;)V]\nAPPLIED ek native_calls=4 bytes=14321\nINJECTIONS ek$4 calls=1 methods=[run()V]\nAPPLIED ek$4 native_calls=3 bytes=3103\nINJECTIONS me/eldodebug/soar/management/mods/ModManager calls=1 methods=[init()V]\nAPPLIED me/eldodebug/soar/management/mods/ModManager native_calls=1 bytes=15184\nPASS actual Mixin transformation of official target bytecode; no Minecraft launch\n",
+  "stderr": "",
+  "returncode": 0
+}

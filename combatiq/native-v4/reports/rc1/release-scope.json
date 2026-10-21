@@ -1,0 +1,22 @@
+{
+  "native_test_cases": 101,
+  "native_passed": 100,
+  "native_skipped": 1,
+  "native_failures": 0,
+  "native_test_runtimes": [
+    "Java 8u504",
+    "Java 21.0.12.1"
+  ],
+  "kernel_assertions": 60,
+  "protocol_tests": 3,
+  "new_mixin_transformations": 6,
+  "headless_only": true,
+  "minecraft_launched": false,
+  "full_client_mixins_applied": false,
+  "windows_os_executed": false,
+  "native_config_persistence_executed": false,
+  "in_game_performance_executed": false,
+  "authoritative_server_trials_executed": false,
+  "historical_recording_test": "UNEXECUTED_NOT_SUPPLIED",
+  "production_merged": false
+}

@@ -1,0 +1,12 @@
+{
+  "compiler": "javac 21.0.12.1",
+  "client_sha256": "7949d73d9be9eb74b662b2844faee2939c0463222c01b4a89378f19ddaa8bbc7",
+  "baseline_identity_verified": true,
+  "abi_only": false,
+  "java_class_major": 52,
+  "compiled_classes": 23,
+  "structural_verification": "PASS: pinned binary, hook/binding method targets, packet layouts and PLAY protocol registration. Structural checks only.",
+  "minecraft_launched": false,
+  "mixin_applied": false,
+  "gui_persistence_tested": false
+}

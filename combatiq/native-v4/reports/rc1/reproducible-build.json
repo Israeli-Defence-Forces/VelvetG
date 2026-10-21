@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "jar_sha256": "43f3a3f9b477986bf76b8ec8cc896df3ff1cc3e294d7526e16bc15fc128a3ac9",
+  "builds": 2,
+  "compiler": "javac 21.0.12.1",
+  "source_commit": "d75d79e5b1d8022f904d3175145d17557073f31d",
+  "scope": "Same compiler and sources from two checkout paths; JAR bytes identical; manifests differ in local/GitHub commit provenance"
+}
