@@ -80,6 +80,8 @@ def read_trace(path):
                     raise ValueError('Infinite value')
         except ValueError as ex:
             raise ValueError('Invalid numeric row at %d' % i) from ex
+        if row['ns'] < 0 or (schema == 2 and (row['tick'] < 0 or row['epoch'] < 0 or row['thread'] < 0 or row['sequence'] <= 0)):
+            raise ValueError('Negative time/identity or nonpositive sequence')
         if row['kind'] not in range(1,17 if schema == 2 else 9):
             raise ValueError('Unknown event kind')
         if schema == 1:
@@ -93,6 +95,7 @@ def read_trace(path):
                 reasons.append('UNKNOWN_PACKET_CODE')
         row['row'] = i
         events.append(row)
+    if not events: reasons.append('NO_EVENTS')
     if not ended: reasons.append('END_MISSING')
     if loss is None: reasons.append('LOSS_MISSING')
     elif loss: reasons.append('EVENT_LOSS')
@@ -106,7 +109,7 @@ def sprint_transitions(events):
     previous = {}
     transitions = []
     for e in events:
-        key = (e['epoch'],e['thread'])
+        key = (e['epoch'],e['thread'],e['entity'])
         if e['kind'] == 10:
             stacks[key].append(e)
         elif e['kind'] == 11:
@@ -159,7 +162,7 @@ def releases(trace, transitions):
         if any(t['data']==0 for t in direct): flags.append('LOCAL_SPRINT_STOP_OBSERVED')
         if any(t['data']==1 for t in direct): flags.append('LOCAL_SPRINT_RESTART_OBSERVED')
         attempts = [e for e in trace['events'] if trace['schema']==2 and e['kind']==5 and e['epoch']==start['epoch']
-                    and start['ns']-100_000_000<=e['ns']<=cutoff]
+                    and e['thread']==start['thread'] and start['ns']-100_000_000<=e['ns']<=cutoff]
         packet_order = [dict(row=e['row'],thread=e['thread'],code=PACKETS.get(e['data'],'LEGACY_UNDECODED')) for e in attempts]
         if any(e['data'] in (11,12) for e in attempts) and trace['schema']==2:
             flags.append('SPRINT_ACTION_ATTEMPT_OBSERVED')
@@ -186,7 +189,9 @@ def releases(trace, transitions):
         elif e['kind']==1:
             if pending is None: pending=e
         elif e['kind']==2:
-            if pending is not None: finish(e)
+            if pending is not None:
+                if e['thread'] == pending['thread'] and e['data'] == pending['data']: finish(e)
+                else: finish(None, 'INPUT_STREAM_CHANGED')
             elif had_down: repeated_down += 1
             had_down=True
     finish(None,'RECORDING_ENDED_BEFORE_REPRESS')
@@ -223,7 +228,9 @@ def analyze(path):
     attack_dt=[(b['ns']-a['ns'])/1e6 for a,b in zip(packets,packets[1:]) if b['epoch']==a['epoch'] and b['ns']>=a['ns']]
     evidence=INVALID if not trace['complete'] else OBSERVED
     packets_by_stage={str(k):dict(Counter(PACKETS.get(e['data'],'UNDECODED') for e in events if e['kind']==k)) for k in (5,6,15)}
-    return dict(schema=trace['schema'],recording=dict(evidence=evidence,complete=trace['complete'],
+    from analytics import analyze_all
+    advanced = analyze_all(trace, intervals, transitions)
+    return dict(analyzers=advanced, schema=trace['schema'],recording=dict(evidence=evidence,complete=trace['complete'],
                 reasons=trace['reasons'],event_loss=trace['loss'],events=len(events),counts=dict(counts)),
                 instrumentation_diagnostics=diagnostics,
                 coverage=dict(actual_transport_write=ABSENT,server_acceptance=ABSENT,
@@ -270,3 +277,4 @@ def main():
     else: print(text)
 
 if __name__=='__main__': main()
+
