@@ -40,3 +40,31 @@ def ref(e):
 
 def unavailable(*reasons):
     return {r: evidence(None, Quality.NOT_RECORDED, r) for r in reasons}
+
+
+class EventIndex:
+    """Bounded proximity queries. Dense ambiguous windows are explicitly truncated."""
+    def __init__(self, events):
+        from collections import defaultdict
+        self.groups=defaultdict(list)
+        for e in events:
+            self.groups[(e['epoch'],e['thread'],e['kind'])].append(e)
+        self.times={}
+        for key,group in self.groups.items():
+            group.sort(key=lambda e:(e['ns'],e['sequence']))
+            self.times[key]=[e['ns'] for e in group]
+        self.truncated=0
+
+    def window(self,event,kinds,width,limit=64):
+        from bisect import bisect_left,bisect_right
+        output=[]
+        for kind in kinds:
+            key=(event['epoch'],event['thread'],kind)
+            times=self.times.get(key,[]);group=self.groups.get(key,[])
+            lo=bisect_left(times,event['ns']-width);hi=bisect_right(times,event['ns']+width)
+            if hi-lo>limit:
+                self.truncated+=1
+                center=bisect_left(times,event['ns'])
+                lo=max(lo,min(center-limit//2,hi-limit));hi=lo+limit
+            output.extend(group[lo:hi])
+        return sorted(output,key=lambda e:e['sequence'])

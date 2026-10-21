@@ -1,9 +1,15 @@
 from .model import *
+from bisect import bisect_right
+from collections import defaultdict
 
 
 def analyze(trace, intervals, transitions, maximum_gap_ns=750_000_000, minimum_attempts=2):
     if maximum_gap_ns<=0 or minimum_attempts<2: raise ValueError('Invalid observational combo definition')
     chains=[]; chain=[]
+    correction_sequences=defaultdict(list)
+    for r in trace['events']:
+        if r['kind'] in (6,15) and r['data']==22:
+            correction_sequences[r['epoch']].append(r['sequence'])
     def finish(reason):
         if len(chain)>=minimum_attempts:
             gaps=[(b['ns']-a['ns'])/1e6 for a,b in zip(chain,chain[1:])]
@@ -16,9 +22,9 @@ def analyze(trace, intervals, transitions, maximum_gap_ns=750_000_000, minimum_a
     for e in attacks(trace):
         if chain:
             prev=chain[-1]
-            between=[r for r in trace['events'] if r['epoch']==prev['epoch']
-                     and prev['sequence']<r['sequence']<e['sequence']]
-            correction=any(r['kind'] in (6,15) and r['data']==22 for r in between)
+            positions=correction_sequences[prev['epoch']]
+            at=bisect_right(positions,prev['sequence'])
+            correction=at<len(positions) and positions[at]<e['sequence']
             boundary=not same_stream(e,prev) or e['entity']!=prev['entity'] or e['entity']<0
             if boundary or correction or e['ns']-prev['ns']>maximum_gap_ns:
                 finish('CONTEXT_THREAD_OR_TARGET_CHANGED' if boundary else 'CORRECTION_OBSERVED' if correction else 'SPACING_GAP')

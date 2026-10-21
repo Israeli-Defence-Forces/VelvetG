@@ -8,14 +8,14 @@ def analyze(trace, intervals, transitions):
         own = [e for e in trace['events'] if e['epoch'] == interval['epoch']
                and e['thread'] == interval['thread']]
         within = [e for e in own if end is not None and start <= e['ns'] <= end]
-        adjacent = [e for e in attacks(trace) if e in own and end is not None
+        adjacent = [e for e in attacks(trace) if e['epoch']==interval['epoch'] and e['thread']==interval['thread'] and end is not None
                     and start-100_000_000 <= e['ns'] <= end+250_000_000]
         stopped = [e for e in transitions if e['epoch'] == interval['epoch']
                    and e['thread'] == interval['thread'] and e['data'] == 0
-                   and e['previous'] == 1 and end is not None and start <= e['ns'] <= end+250_000_000]
+                   and e['previous'] == 1 and e['evidence']=='DIRECTLY_OBSERVED' and end is not None and start <= e['ns'] <= end+250_000_000]
         restarted = [e for e in transitions if e['epoch'] == interval['epoch']
                      and e['thread'] == interval['thread'] and e['data'] == 1
-                     and e['previous'] == 0 and stopped and e['sequence'] > stopped[0]['sequence']
+                     and e['previous'] == 0 and e['evidence']=='DIRECTLY_OBSERVED' and stopped and e['sequence'] > stopped[0]['sequence']
                      and start <= e['ns'] <= end+250_000_000]
         flags = ['RELEASE_OBSERVED', 'SERVER_OUTCOME_UNKNOWN']
         if 'RELEASE_SAMPLED' in interval['reasons']: flags.append('RELEASE_MOVEMENT_SAMPLED')
