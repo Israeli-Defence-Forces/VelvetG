@@ -1,0 +1,13 @@
+test_actual_adapter_draw_controls_and_persistence_contract (test_native_hud.NativeHud.test_actual_adapter_draw_controls_and_persistence_contract) ... ok
+test_all_core_classes_java8 (test_trainer.TrainerTests.test_all_core_classes_java8) ... ok
+test_native_bridge_without_csv (test_trainer.TrainerTests.test_native_bridge_without_csv) ... ok
+test_passive_hot_paths_have_no_file_input_or_packet_mutation (test_trainer.TrainerTests.test_passive_hot_paths_have_no_file_input_or_packet_mutation) ... ok
+test_timing_stats_ground_and_uncertainty (test_trainer.TrainerTests.test_timing_stats_ground_and_uncertainty) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 3.276s
+
+OK
+PASS: 38 native trainer controls/draw/persistence contract assertions; no Minecraft or actual profile I/O
+PASS: 16 native bridge assertions; fake world, no game launch or CSV
+PASS: 38 trainer engine assertions; no Minecraft runtime claim

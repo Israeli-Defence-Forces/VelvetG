@@ -1,0 +1,44 @@
+{
+  "kind": "REAL_BUILT_JAR_TEMPORARY_INSTALL",
+  "minecraft_executed": false,
+  "windows_executed": false,
+  "steps": [
+    {
+      "status": "verified-no-changes",
+      "sha256": "41ccac187f990ed6b5a6b27e6b9ba4535a952cc1ab21bee6da1a44eb3663a91b"
+    },
+    {
+      "status": "installed",
+      "sha256": "41ccac187f990ed6b5a6b27e6b9ba4535a952cc1ab21bee6da1a44eb3663a91b",
+      "version": "VelvetG-Knockback-Trainer-RC1"
+    },
+    {
+      "status": "already-installed",
+      "sha256": "41ccac187f990ed6b5a6b27e6b9ba4535a952cc1ab21bee6da1a44eb3663a91b"
+    },
+    {
+      "status": "rollback-verified-no-changes"
+    },
+    {
+      "status": "rolled-back"
+    },
+    {
+      "status": "uninstalled-original-preserved"
+    }
+  ],
+  "cli_check": {
+    "schema": 1,
+    "id": "VelvetG-Knockback-Trainer-RC1",
+    "jar_sha256": "41ccac187f990ed6b5a6b27e6b9ba4535a952cc1ab21bee6da1a44eb3663a91b",
+    "profile_sha256": "f2c531598f709c4281d88ce5363e3c3afd94cebe25e5c846b9c5af7e7c6925e2",
+    "can_rollback": true,
+    "rollback": {
+      ".knockback-trainer-rc1/rollback.jar": null,
+      ".knockback-trainer-rc1/rollback.json": null,
+      ".knockback-trainer-rc1/rollback.receipt.json": null
+    }
+  },
+  "passed": true,
+  "source_rc1_preserved": true,
+  "sha256": "41ccac187f990ed6b5a6b27e6b9ba4535a952cc1ab21bee6da1a44eb3663a91b"
+}

@@ -1,0 +1,102 @@
+{
+  "scope": "SYNTHETIC_NOT_MINECRAFT",
+  "compiler": "javac 21.0.12.1",
+  "runs": [
+    {
+      "mode": "disabled",
+      "timed_batches": 5000,
+      "mean_ns": 93.5538,
+      "p95_ns": 77,
+      "p99_ns": 106,
+      "producer_bytes_per_batch": 0.3008,
+      "gc_collections": 0,
+      "repeat": 0
+    },
+    {
+      "mode": "disabled",
+      "timed_batches": 5000,
+      "mean_ns": 141.7388,
+      "p95_ns": 142,
+      "p99_ns": 214,
+      "producer_bytes_per_batch": 0.3008,
+      "gc_collections": 0,
+      "repeat": 1
+    },
+    {
+      "mode": "disabled",
+      "timed_batches": 5000,
+      "mean_ns": 111.8556,
+      "p95_ns": 123,
+      "p99_ns": 192,
+      "producer_bytes_per_batch": 0.3008,
+      "gc_collections": 0,
+      "repeat": 2
+    },
+    {
+      "mode": "native-bridge",
+      "timed_batches": 5000,
+      "mean_ns": 8529.6678,
+      "p95_ns": 12435,
+      "p99_ns": 37308,
+      "producer_bytes_per_batch": 3480.376,
+      "gc_collections": 1,
+      "repeat": 0
+    },
+    {
+      "mode": "native-bridge",
+      "timed_batches": 5000,
+      "mean_ns": 12437.8774,
+      "p95_ns": 12247,
+      "p99_ns": 41197,
+      "producer_bytes_per_batch": 3480.376,
+      "gc_collections": 1,
+      "repeat": 1
+    },
+    {
+      "mode": "native-bridge",
+      "timed_batches": 5000,
+      "mean_ns": 7904.1978,
+      "p95_ns": 13549,
+      "p99_ns": 33291,
+      "producer_bytes_per_batch": 3480.376,
+      "gc_collections": 1,
+      "repeat": 2
+    },
+    {
+      "mode": "core-max-history",
+      "timed_batches": 5000,
+      "mean_ns": 14220.8874,
+      "p95_ns": 40561,
+      "p99_ns": 57002,
+      "producer_bytes_per_batch": 12831.1088,
+      "gc_collections": 1,
+      "repeat": 0
+    },
+    {
+      "mode": "core-max-history",
+      "timed_batches": 5000,
+      "mean_ns": 11327.592,
+      "p95_ns": 14149,
+      "p99_ns": 49319,
+      "producer_bytes_per_batch": 12831.1088,
+      "gc_collections": 1,
+      "repeat": 1
+    },
+    {
+      "mode": "core-max-history",
+      "timed_batches": 5000,
+      "mean_ns": 21755.1468,
+      "p95_ns": 66410,
+      "p99_ns": 107073,
+      "producer_bytes_per_batch": 12831.1584,
+      "gc_collections": 1,
+      "repeat": 2
+    }
+  ],
+  "limitations": [
+    "Native bridge uses fake world/collision/sound objects",
+    "Core mode uses maximum 600-sample immutable graph snapshots",
+    "No NanoVG/GPU/audio hardware/game FPS or frame-time measurement",
+    "Tight loop with 1000 warmup + 5000 timed batches; allocation includes instrumentation"
+  ]
+}

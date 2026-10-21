@@ -23,3 +23,7 @@ combatiq/native-v4/build-v4/
 
 /.mixin.out/
 /logs/
+
+knockback-trainer/build/
+!knockback-trainer/integration/tools/
+!knockback-trainer/integration/tools/**

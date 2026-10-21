@@ -1,0 +1,22 @@
+{
+  "source_commit": "ed03fbc4ace2247ce81abb055f046064ed936c21",
+  "run_url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39588422483",
+  "jobs": [
+    {
+      "name": "trainer (17)",
+      "conclusion": "success",
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39588422483/job/119183011141"
+    },
+    {
+      "name": "trainer (21)",
+      "conclusion": "success",
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39588422483/job/119183011412"
+    },
+    {
+      "name": "trainer (8)",
+      "conclusion": "success",
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39588422483/job/119183011463"
+    }
+  ],
+  "minecraft_runtime_validated": false
+}
