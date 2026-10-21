@@ -1,0 +1,21 @@
+{
+  "commit": "3cf47c3eb6c0388390d91166b9c2f1c77a1e5eea",
+  "run_url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39559227348",
+  "jobs": [
+    {
+      "name": "native-mocks (17)",
+      "conclusion": "success",
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39559227348/job/119086203454"
+    },
+    {
+      "name": "native-mocks (8)",
+      "conclusion": "success",
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39559227348/job/119086203811"
+    },
+    {
+      "name": "native-mocks (21)",
+      "conclusion": "success",
+      "url": "https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39559227348/job/119086203839"
+    }
+  ]
+}

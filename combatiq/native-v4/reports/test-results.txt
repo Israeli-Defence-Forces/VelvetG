@@ -1,0 +1,85 @@
+test_ambiguous_feedback_one_counter_output (test_advanced.AdvancedTests.test_ambiguous_feedback_one_counter_output) ... ok
+test_attack_intent_without_packet_is_not_swing (test_advanced.AdvancedTests.test_attack_intent_without_packet_is_not_swing) ... ok
+test_block_order_and_sparse_state (test_advanced.AdvancedTests.test_block_order_and_sparse_state) ... ok
+test_combo_target_gap_and_correction (test_advanced.AdvancedTests.test_combo_target_gap_and_correction) ... ok
+test_cross_thread_attack_not_tap_context (test_advanced.AdvancedTests.test_cross_thread_attack_not_tap_context) ... ok
+test_cross_thread_repress_abstains (test_advanced.AdvancedTests.test_cross_thread_repress_abstains) ... ok
+test_cross_thread_time_is_not_causal_order (test_advanced.AdvancedTests.test_cross_thread_time_is_not_causal_order) ... ok
+test_deterministic_replay (test_advanced.AdvancedTests.test_deterministic_replay) ... ok
+test_empty_trace_is_invalid (test_advanced.AdvancedTests.test_empty_trace_is_invalid) ... ok
+test_entity_mismatch_does_not_pair_setter (test_advanced.AdvancedTests.test_entity_mismatch_does_not_pair_setter) ... ok
+test_invalid_trace_abstains_all_modules (test_advanced.AdvancedTests.test_invalid_trace_abstains_all_modules) ... ok
+test_navigation_release_abstains (test_advanced.AdvancedTests.test_navigation_release_abstains) ... ok
+test_negative_timestamp_refused (test_advanced.AdvancedTests.test_negative_timestamp_refused) ... ok
+test_nonlocal_velocity_not_counterattack (test_advanced.AdvancedTests.test_nonlocal_velocity_not_counterattack) ... ok
+test_wtap_evidence_is_independent (test_advanced.AdvancedTests.test_wtap_evidence_is_independent) ... ok
+test_dense_window_abstains_and_marks_truncation (test_advanced.DenseAndCounterTests.test_dense_window_abstains_and_marks_truncation) ... ok
+test_filtered_is_separate_from_loss (test_advanced.DenseAndCounterTests.test_filtered_is_separate_from_loss) ... ok
+test_empty_and_replay (test_calibration.CalibrationTests.test_empty_and_replay) ... ok
+test_held_out_selection_and_context_only (test_calibration.CalibrationTests.test_held_out_selection_and_context_only) ... ok
+test_leakage_duplicate_and_event_reuse_refused (test_calibration.CalibrationTests.test_leakage_duplicate_and_event_reuse_refused) ... ok
+test_no_holdout_selection_leak (test_calibration.CalibrationTests.test_no_holdout_selection_leak) ... ok
+test_non_authoritative_abstains (test_calibration.CalibrationTests.test_non_authoritative_abstains) ... ok
+test_nonfinite_and_unregistered_refused (test_calibration.CalibrationTests.test_nonfinite_and_unregistered_refused) ... ok
+test_small_sessions_abstain (test_calibration.CalibrationTests.test_small_sessions_abstain) ... ok
+test_attack_before_after (test_combat.ReplayTests.test_attack_before_after) ... ok
+test_binding_transform_not_false_release (test_combat.ReplayTests.test_binding_transform_not_false_release) ... ok
+test_context_epoch (test_combat.ReplayTests.test_context_epoch) ... ok
+test_counterattack_not_acceptance (test_combat.ReplayTests.test_counterattack_not_acceptance) ... ok
+test_duplicate_down (test_combat.ReplayTests.test_duplicate_down) ... ok
+test_focus (test_combat.ReplayTests.test_focus) ... ok
+test_gap (test_combat.ReplayTests.test_gap) ... ok
+test_interact_not_attack (test_combat.ReplayTests.test_interact_not_attack) ... ok
+test_json_finite (test_combat.ReplayTests.test_json_finite) ... ok
+test_legacy_context_and_actions_absent (test_combat.ReplayTests.test_legacy_context_and_actions_absent) ... ok
+test_loss (test_combat.ReplayTests.test_loss) ... ok
+test_no_callbacks_is_unknown_not_positive_coverage (test_combat.ReplayTests.test_no_callbacks_is_unknown_not_positive_coverage) ... ok
+test_no_false_cross_thread_order (test_combat.ReplayTests.test_no_false_cross_thread_order) ... ok
+test_schema_controls (test_combat.ReplayTests.test_schema_controls) ... ok
+test_sequence_gap (test_combat.ReplayTests.test_sequence_gap) ... ok
+test_setter_and_attempts (test_combat.ReplayTests.test_setter_and_attempts) ... ok
+test_unfinished_and_caps (test_combat.ReplayTests.test_unfinished_and_caps) ... ok
+test_unknown_initial (test_combat.ReplayTests.test_unknown_initial) ... ok
+test_unsampled (test_combat.ReplayTests.test_unsampled) ... ok
+test_mock_hooks_and_anonymous_packaging (test_native_runtime.NativeRuntimeTests.test_mock_hooks_and_anonymous_packaging) ... ok
+test_output_creation_and_schema (test_native_runtime.NativeRuntimeTests.test_output_creation_and_schema) ... ok
+test_all_bridge_siblings_are_java8 (test_recorder_limits.RecorderLimits.test_all_bridge_siblings_are_java8) ... ok
+test_archive_verification_preserves_unrelated_and_all_siblings (test_recorder_limits.RecorderLimits.test_archive_verification_preserves_unrelated_and_all_siblings) ... ok
+test_concurrent_exact_accounting_and_sequences (test_recorder_limits.RecorderLimits.test_concurrent_exact_accounting_and_sequences) ... ok
+test_deterministic_queue_overflow (test_recorder_limits.RecorderLimits.test_deterministic_queue_overflow) ... ok
+test_disk_error_does_not_escape_game_callback (test_recorder_limits.RecorderLimits.test_disk_error_does_not_escape_game_callback) ... ok
+test_remapped_forward_ignores_w (test_recorder_limits.RecorderLimits.test_remapped_forward_ignores_w) ... ok
+test_restart_and_repeated_enable (test_recorder_limits.RecorderLimits.test_restart_and_repeated_enable) ... ok
+test_row_cap_is_exact (test_recorder_limits.RecorderLimits.test_row_cap_is_exact) ... ok
+test_size_cap_and_footer (test_recorder_limits.RecorderLimits.test_size_cap_and_footer) ... ok
+test_build_pins_only_actual_output_and_keeps_baseline_guard (test_upgrade_v4.GeneratedInstallerTests.test_build_pins_only_actual_output_and_keeps_baseline_guard) ... ok
+test_backup_collision_preserved (test_upgrade_v4.UpgradeV4Tests.test_backup_collision_preserved) ... ok
+test_bad_payload (test_upgrade_v4.UpgradeV4Tests.test_bad_payload) ... ok
+test_check_upgrade_idempotence_rollback (test_upgrade_v4.UpgradeV4Tests.test_check_upgrade_idempotence_rollback) ... ok
+test_failure_between_replaces_restores (test_upgrade_v4.UpgradeV4Tests.test_failure_between_replaces_restores) ... ok
+test_launcher_metadata (test_upgrade_v4.UpgradeV4Tests.test_launcher_metadata) ... ok
+test_rollback_metadata_tamper_refused (test_upgrade_v4.UpgradeV4Tests.test_rollback_metadata_tamper_refused) ... ok
+test_unknown_baseline (test_upgrade_v4.UpgradeV4Tests.test_unknown_baseline) ... ok
+test_unknown_binary (test_upgrade_v4.UpgradeV4Tests.test_unknown_binary) ... ok
+test_binding_disagrees (test_v3.RecordingTests.test_binding_disagrees) ... ok
+test_bracketed_release_no_sample (test_v3.RecordingTests.test_bracketed_release_no_sample) ... ok
+test_gap_prevents_false_missed (test_v3.RecordingTests.test_gap_prevents_false_missed) ... ok
+test_hook_probe_and_error (test_v3.RecordingTests.test_hook_probe_and_error) ... ok
+test_incomplete_retracts_classification (test_v3.RecordingTests.test_incomplete_retracts_classification) ... ok
+test_missing_sampler_is_not_false_missed (test_v3.RecordingTests.test_missing_sampler_is_not_false_missed) ... ok
+test_real_csv (test_v3.RecordingTests.test_real_csv) ... skipped 'Historical recording not attached to this test environment'
+test_sampled_release (test_v3.RecordingTests.test_sampled_release) ... ok
+test_unknown_initial (test_v3.RecordingTests.test_unknown_initial) ... ok
+
+----------------------------------------------------------------------
+Ran 72 tests in 5.437s
+
+OK (skipped=1)
+PASS: exact v3 installation, launcher metadata and v4 JAR verified; no changes made.
+PASS: CombatIQ v3 -> v4 upgraded, launcher metadata updated. Original VelvetG untouched.
+Backup copies: /tmp/tmptv2tmboj/game/libraries/me/eldodebug/GlideClient/2.0.9.6-CombatIQ-Experimental/GlideClient-2.0.9.6-CombatIQ-Experimental.jar.combatiq-v3-backup /tmp/tmptv2tmboj/game/versions/VelvetG-CombatIQ-Experimental/VelvetG-CombatIQ-Experimental.json.combatiq-v3-backup
+PASS: v4 is already installed and launcher metadata verified.
+PASS: v3 rollback backups valid; no files modified.
+PASS: rolled experimental profile back to v3; original VelvetG untouched.
+PASS: CombatIQ v3 -> v4 upgraded, launcher metadata updated. Original VelvetG untouched.
+Backup copies: /tmp/tmpd3siegs6/game/libraries/me/eldodebug/GlideClient/2.0.9.6-CombatIQ-Experimental/GlideClient-2.0.9.6-CombatIQ-Experimental.jar.combatiq-v3-backup /tmp/tmpd3siegs6/game/versions/VelvetG-CombatIQ-Experimental/VelvetG-CombatIQ-Experimental.json.combatiq-v3-backup
