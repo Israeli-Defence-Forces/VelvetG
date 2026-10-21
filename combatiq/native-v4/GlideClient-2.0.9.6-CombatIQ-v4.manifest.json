@@ -1,0 +1,24 @@
+{
+  "changed": [
+    "me/eldodebug/soar/combatiq/CombatIQNative$1.class",
+    "me/eldodebug/soar/combatiq/CombatIQNative$2.class",
+    "me/eldodebug/soar/combatiq/CombatIQNative.class",
+    "mixins.soar.json"
+  ],
+  "added": [
+    "me/eldodebug/soar/combatiq/PacketProbe$1.class",
+    "me/eldodebug/soar/combatiq/PacketProbe$Layout.class",
+    "me/eldodebug/soar/combatiq/PacketProbe.class",
+    "me/eldodebug/soar/injection/mixin/mixins/combatiq/CombatIQHandlerMixin.class",
+    "me/eldodebug/soar/injection/mixin/mixins/combatiq/CombatIQMinecraftMixin.class",
+    "me/eldodebug/soar/injection/mixin/mixins/combatiq/CombatIQPlayerMixin.class"
+  ],
+  "unchanged_original_entries": 2309,
+  "java_class_major": 52,
+  "input_v3_sha256": "7949d73d9be9eb74b662b2844faee2939c0463222c01b4a89378f19ddaa8bbc7",
+  "output_sha256": "696bce5471d2db5ad0b0be567204efc9e65ebeb075688b10ac8555fc69689455",
+  "compiler": "javac 17.0.20",
+  "minecraft_launch_tested": false,
+  "mixin_application_tested": false,
+  "transport_write_instrumented": false
+}
