@@ -27,6 +27,7 @@ class NativeRuntimeTests(unittest.TestCase):
             a=analyze(files[0]);self.assertTrue(a['recording']['complete'])
             self.assertEqual(a['wtap']['sampled'],1)
             self.assertEqual([t['data'] for t in a['sprint']['transitions']],[0,1])
+            self.assertEqual(a['recording']['packet_filtered'],1)
             self.assertEqual(a['packets']['5']['ATTACK'],1)
             self.assertEqual(a['packets']['5']['INTERACT'],1)
             self.assertEqual(a['packets']['6']['VELOCITY'],1)

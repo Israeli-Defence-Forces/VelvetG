@@ -34,3 +34,7 @@ JDK 21 found in prior workspace toolchain. Initial suite: 38 tests, 37 passed, h
 5. Native module, full binary verification, Minecraft/Mixin application, Windows/FPS/server trials require missing verified artifacts and runtime; retain exact blockers in PROGRESS.md.
 
 Mutable ownership: client thread owns reflection handles, previousPlayer/context, sprint state, input/ticks. Packet ClassValue layouts are immutable; callback error latches are atomic. All ring slots, sequence, head/tail and drop accounting are guarded by GATE; volatile head/tail publish to writer. Writer exclusively owns CSV/path/row counters. Cross-thread timestamps establish observation proximity only. Epoch is context epoch, not verified connection identity.
+
+## Implemented follow-through
+
+The published continuation now includes the ownership/Mixin fixes, verified remapping, restartable recording and immutable snapshots, exact row/UTF-8 caps, explicit filtered/lost counts, sibling packaging checks, native HUD source adapter, four deterministic analyzer modules, dense-window bounds and abstention, calibration and benchmark tooling. Latest local validation: 72 tests (71 pass, one historical CSV skip), 60 kernel assertions and 3 protocol tests. An available official Minecraft JAR matches the pinned SHA; expanded structural checks pass. The optional native module API-compiles against a different local r8 client and is not live-validated. See PROGRESS.md for remaining features and exact artifact/runtime blockers; full Phases VI–IX acceptance is not claimed.

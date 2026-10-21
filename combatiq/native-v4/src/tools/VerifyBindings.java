@@ -54,7 +54,7 @@ public final class VerifyBindings {
                 {"b","18","hm"},{"b","25","hf"},{"b","20","gv"},{"b","24","hz"},{"b","8","fi"}};
             for(String[] r:expected)if(!registry.get(r[0]).get(Integer.parseInt(r[1])).equals(r[2]))throw new IllegalStateException("Registry mismatch "+Arrays.toString(r));
         }
-        System.out.println("PASS: pinned binary, 16 method targets, packet layouts and PLAY protocol registration. Structural checks only.");
+        System.out.println("PASS: pinned binary, hook/binding method targets, packet layouts and PLAY protocol registration. Structural checks only.");
     }
 }
 

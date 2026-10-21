@@ -12,6 +12,7 @@ import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -58,6 +59,7 @@ public final class CombatIQNative {
     private static volatile boolean running = true;
     private static volatile boolean recordable = true;
     private static volatile boolean capped;
+    private static volatile long filtered;
     private static final long MAX_ROWS = Math.max(1, Math.min(150000L, Long.getLong("velvet.combatiq.maxRows", 150000L))); // bounded opt-in recording
     private static volatile String status = "CombatIQ: initializing";
     private static final AtomicBoolean starting = new AtomicBoolean();
@@ -72,7 +74,7 @@ public final class CombatIQNative {
         public final long lost;
         Snapshot(String status, String sprint, String lastRelease, String action, long lost) {
             this.status=status; this.sprint=sprint; this.lastRelease=lastRelease;
-            this.action=action; this.lost=lost; this.health="Lost events: " + lost;
+            this.action=action; this.lost=lost; this.health="Lost: " + lost + " | filtered: " + filtered;
         }
     }
     private static volatile Snapshot snapshot = new Snapshot("CombatIQ off", "Sprint unknown", "Release unknown", "No action observation", 0);
@@ -96,17 +98,17 @@ public final class CombatIQNative {
         if (!startRequested || starting.get()) return;
         synchronized (GATE) {
             if (!startRequested || starting.get()) return;
-            head=tail=sequence=dropped=ticks=stopAt=0;
+            head=tail=sequence=dropped=ticks=stopAt=filtered=0;
             epoch++; previousContext=-1; previousPlayer=null; sprintKnown=false;
             releaseAt=0; lastReleaseMs=Double.NaN; lastAction="No action observation";
-            otherHookFailure.set(false); sampleHookSeen.set(false); sampleHookFailure.set(false);
+            diagnosticMask.set(0); sampleHookSeen.set(false); sampleHookFailure.set(false);
             previousForwardCode=Integer.MIN_VALUE;
             running=true; recordable=true; capped=false; startRequested=false;
         }
     }
     private static final int KEY_UP = 1, KEY_DOWN = 2, SAMPLE = 3, TICK = 4,
         SEND_ATTEMPT = 5, RECEIVE_BEFORE_FILTER = 6, SAMPLE_HOOK_SEEN = 7, SAMPLE_HOOK_FAILURE = 8;
-    private static final AtomicBoolean otherHookFailure = new AtomicBoolean();
+    private static final AtomicInteger diagnosticMask = new AtomicInteger();
     private static final AtomicBoolean sampleHookSeen = new AtomicBoolean();
     private static final AtomicBoolean sampleHookFailure = new AtomicBoolean();
     private static volatile boolean reflectReady;
@@ -199,12 +201,12 @@ public final class CombatIQNative {
     }
 
     private static void diagnostic(int code, Throwable failure) {
-        if (otherHookFailure.compareAndSet(false, true))
-            add(16, code, Float.NaN, failure.getClass().getSimpleName());
+        if (firstDiagnostic(code))
+            add(16, code, Float.NaN, failure == null ? null : failure.getClass().getSimpleName());
     }
 
     public static void onPlayerPoint(Object instance, int stage) {
-        if (!ENABLED) return;
+        if (!ENABLED || !recordable) return;
         // Reject foreign threads/entities BEFORE any mutable context observation.
         if (Thread.currentThread() != clientThread || instance == null) return;
         try {
@@ -250,7 +252,7 @@ public final class CombatIQNative {
         if (active) add(14, 0, Float.NaN, null);
     }
     public static void onHandlerReturn(Object packet) {
-        if (ENABLED && active) safeCapture(packet, 15);
+        if (ENABLED && recordable && active) safeCapture(packet, 15);
     }
 
     /** Keyboard event proxy for the current forward binding; never record chat. */
@@ -328,12 +330,12 @@ public final class CombatIQNative {
 
     /** Pre-send callback can be cancelled later; explicitly NOT a confirmed socket write. */
     public static void onSendAttempt(Object packet) {
-        if (!ENABLED || packet == null || !active) return;
+        if (!ENABLED || !recordable || packet == null || !active) return;
         safeCapture(packet, SEND_ATTEMPT);
     }
     /** Pre-filter receive; packet may be cancelled before it reaches the main thread. */
     public static void onInboundBeforeFilter(Object packet) {
-        if (!ENABLED || packet == null || !active) return;
+        if (!ENABLED || !recordable || packet == null || !active) return;
         safeCapture(packet, RECEIVE_BEFORE_FILTER);
     }
 
@@ -343,7 +345,7 @@ public final class CombatIQNative {
     }
 
     private static boolean gameplay() {
-        if (!ENABLED || Thread.currentThread() != clientThread) return false;
+        if (!ENABLED || !recordable || Thread.currentThread() != clientThread) return false;
         onContextPoint();
         return active;
     }
@@ -419,12 +421,13 @@ public final class CombatIQNative {
                     String row = timestamp + "," + type + "," + value + "," + motion + ","
                         + (name == null ? "" : name) + "," + tick + "," + ep + "," + thread
                         + "," + order + "," + entity + "," + flags + "," + x + "," + y + "," + z + "\n";
-                    if (bytes + row.length() > FILE_BYTES - 512) {
+                    int rowBytes=row.getBytes(StandardCharsets.UTF_8).length;
+                    if (bytes + rowBytes > FILE_BYTES - 512) {
                         capped=true; recordable = false; running = false;
                         synchronized (GATE) { dropped += head - tail + 1; tail = head; }
                         break;
                     }
-                    out.write(row); bytes += row.length();
+                    out.write(row); bytes += rowBytes;
                     rows++;
                     if (rows >= MAX_ROWS) {
                         capped=true; recordable = false;
@@ -443,6 +446,9 @@ public final class CombatIQNative {
                 }
             }
             out.write("# LOSS," + dropped + "\n");
+            long filteredCount;
+            synchronized (GATE) { filteredCount=filtered; }
+            out.write("# FILTERED," + filteredCount + "\n");
             if (capped) out.write("# CAPPED recorder row/duration/size limit reached\n");
             out.write("# END\n");
             out.flush();
@@ -456,10 +462,21 @@ public final class CombatIQNative {
         }
     }
 
-    public static void reportPacketFailure(int code) {
-        if (otherHookFailure.compareAndSet(false, true))
-            emit(16, code, Float.NaN, null, -1, 0, Double.NaN, Double.NaN, Double.NaN);
+    public static void recordFilteredPacket() {
+        synchronized (GATE) { if (ENABLED && recordable) filtered++; }
     }
+
+    private static boolean firstDiagnostic(int code) {
+        int bit=1 << Math.max(0, Math.min(30, code));
+        int old;
+        do {
+            old=diagnosticMask.get();
+            if ((old & bit) != 0) return false;
+        } while (!diagnosticMask.compareAndSet(old,old | bit));
+        return true;
+    }
+
+    public static void reportPacketFailure(int code) { diagnostic(code, null); }
 
     public static String status() { return status; }
     public static boolean enabled() { return ENABLED; }

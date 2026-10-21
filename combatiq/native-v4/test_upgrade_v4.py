@@ -70,4 +70,16 @@ class UpgradeV4Tests(unittest.TestCase):
             with self.assertRaises(ValueError):u.rollback(game,False)
             self.assertEqual(lib.read_bytes(),new.read_bytes())
 
+class GeneratedInstallerTests(unittest.TestCase):
+    def test_build_pins_only_actual_output_and_keeps_baseline_guard(self):
+        from build_v4 import pinned_installer
+        source=pinned_installer('a'*64)
+        namespace={'__name__':'generated_installer'}
+        exec(compile(source,'generated.upgrade.py','exec'),namespace)
+        self.assertEqual(namespace['CURRENT_SHA'],'a'*64)
+        self.assertEqual(namespace['PREVIOUS_SHA'],u.PREVIOUS_SHA)
+        self.assertEqual(namespace['BASE_SHA'],u.BASE_SHA)
+        with self.assertRaises(ValueError):pinned_installer('not-an-artifact')
+
 if __name__=='__main__':unittest.main()
+

@@ -64,7 +64,7 @@ public final class PacketProbe {
     public static void capture(Object packet, int stage) {
         if (packet == null) return;
         Layout l = LAYOUTS.get(packet.getClass());
-        if (l.family == 0) return;
+        if (l.family == 0) { CombatIQNative.recordFilteredPacket(); return; }
         if (l.family < 0) { CombatIQNative.reportPacketFailure(5); return; }
         try {
             int code;

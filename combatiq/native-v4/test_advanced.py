@@ -102,3 +102,20 @@ class AdvancedTests(unittest.TestCase):
 
     def test_empty_trace_is_invalid(self):
         self.assertIn('NO_EVENTS',trace([])[0]['reasons'])
+
+class DenseAndCounterTests(unittest.TestCase):
+    def test_dense_window_abstains_and_marks_truncation(self):
+        rows=[(i,9,1,{'flags':39}) for i in range(100)]+[(110,5,13),(111,14,0)]
+        t,r=trace(rows)
+        b=r['analyzers']['block_hit']
+        self.assertIn('DENSE_WINDOWS_TRUNCATED_TO_64_PER_KIND_ABSTAIN',b['reasons'])
+        self.assertEqual(b['inferred'],[])
+        self.assertLessEqual(len(b['observations']['attacks'][0]['blocking_observations']),64)
+
+    def test_filtered_is_separate_from_loss(self):
+        t,r=trace([(0,2,17)],'# LOSS,0\n# FILTERED,17\n# END\n')
+        self.assertTrue(t['complete'])
+        self.assertEqual(r['recording']['packet_filtered'],17)
+        self.assertEqual(r['recording']['event_loss'],0)
+        for tail in ('# FILTERED,1\n# LOSS,0\n# END\n', '# LOSS,0\n# FILTERED,-1\n# END\n'):
+            with self.assertRaises(ValueError):trace([(0,2,17)],tail)

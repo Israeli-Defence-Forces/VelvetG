@@ -42,6 +42,7 @@ def read_trace(path):
     if next(csv.reader([text[1]])) != header:
         raise ValueError('Unrecognized columns')
     events, loss, ended, capped, trailer = [], None, False, False, False
+    filtered = None
     reasons = []
     for i,line in enumerate(text[2:], 3):
         if ended:
@@ -53,6 +54,13 @@ def read_trace(path):
             if loss < 0 or len(line.split(',')) != 2:
                 raise ValueError('Invalid LOSS')
             trailer = True
+            continue
+        if line.startswith('# FILTERED,'):
+            if schema != 2 or not trailer or filtered is not None or capped:
+                raise ValueError('Unexpected FILTERED')
+            values = line.split(',')
+            if len(values) != 2 or int(values[1]) < 0: raise ValueError('Invalid FILTERED')
+            filtered = int(values[1])
             continue
         if line.startswith('# CAPPED'):
             if not trailer or capped:
@@ -100,7 +108,7 @@ def read_trace(path):
     if loss is None: reasons.append('LOSS_MISSING')
     elif loss: reasons.append('EVENT_LOSS')
     if capped: reasons.append('CAPPED')
-    return dict(schema=schema,complete=not reasons,reasons=sorted(set(reasons)),loss=loss,capped=capped,events=events)
+    return dict(schema=schema,complete=not reasons,reasons=sorted(set(reasons)),loss=loss,filtered=filtered,capped=capped,events=events)
 
 
 def sprint_transitions(events):
@@ -231,7 +239,7 @@ def analyze(path):
     from analytics import analyze_all
     advanced = analyze_all(trace, intervals, transitions)
     return dict(analyzers=advanced, schema=trace['schema'],recording=dict(evidence=evidence,complete=trace['complete'],
-                reasons=trace['reasons'],event_loss=trace['loss'],events=len(events),counts=dict(counts)),
+                reasons=trace['reasons'],event_loss=trace['loss'],packet_filtered=trace['filtered'],events=len(events),counts=dict(counts)),
                 instrumentation_diagnostics=diagnostics,
                 coverage=dict(actual_transport_write=ABSENT,server_acceptance=ABSENT,
                               local_sprint=UNKNOWN if any(d['kind']==16 and d['code']==4 for d in diagnostics) else OBSERVED if counts[9]+counts[10]+counts[11] else UNKNOWN if trace['schema']==2 else ABSENT,

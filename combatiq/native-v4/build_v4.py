@@ -46,6 +46,13 @@ def verify(v3, out, classes):
         for n in ADDED_MIXINS: assert cfg['mixins'].count('combatiq.'+n)==1
     return dict(changed=sorted(changed),added=sorted(new-old),unchanged_original_entries=len(old)-len(changed),java_class_major=52)
 
+def pinned_installer(output_sha):
+    if not re.fullmatch(r'[0-9a-f]{64}', output_sha):
+        raise ValueError('Require actual built artifact SHA-256')
+    source=(ROOT/'upgrade_v4.py').read_text(encoding='utf-8')
+    return re.sub(r"CURRENT_SHA = '[0-9a-f]{64}'", "CURRENT_SHA = '"+output_sha+"'", source, count=1)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--v3',type=Path,required=True)
@@ -55,7 +62,8 @@ def main():
     a=p.parse_args()
     if a.native_module: ADDED_MIXINS.append('CombatIQModuleMixin')
     if digest(a.v3)!=V3: sys.exit('REFUSED: expected exact v3 JAR hash')
-    if a.out.exists(): sys.exit('REFUSED: output already exists')
+    if a.out.exists() or a.out.with_suffix('.manifest.json').exists() or a.out.with_suffix('.upgrade.py').exists():
+        sys.exit('REFUSED: output/manifest/installer already exists')
     java=shutil.which('java');javac=shutil.which('javac')
     if not java or not javac: sys.exit('JDK required (javac/java)')
     version=subprocess.check_output([javac,'-version'],stderr=subprocess.STDOUT,text=True)
@@ -86,11 +94,16 @@ def main():
                 e=zipfile.ZipInfo(n,(1980,1,1,0,0,0));e.compress_type=zipfile.ZIP_DEFLATED;dest.writestr(e,raw)
         result=verify(a.v3,tmp,classes)
         result.update(input_v3_sha256=V3,output_sha256=digest(tmp),compiler=version.strip(),
-                      minecraft_launch_tested=False,mixin_application_tested=False,transport_write_instrumented=False)
+                      minecraft_launch_tested=False,mixin_application_tested=False,transport_write_instrumented=False,
+                      native_module_included=a.native_module)
+        installer=a.out.with_suffix('.upgrade.py')
+        installer_source=pinned_installer(result['output_sha256'])
+        result['installer_sha256']=hashlib.sha256(installer_source.encode('utf-8')).hexdigest()
         # Link then remove temp: refuses replacing an output created concurrently.
         os.link(tmp,a.out);tmp.unlink()
         manifest=a.out.with_suffix('.manifest.json')
         with manifest.open('x',encoding='utf-8') as f:json.dump(result,f,indent=2)
+        with installer.open('x',encoding='utf-8') as f:f.write(installer_source)
         print(json.dumps(result,indent=2))
     finally:
         if tmp.exists():tmp.unlink()
