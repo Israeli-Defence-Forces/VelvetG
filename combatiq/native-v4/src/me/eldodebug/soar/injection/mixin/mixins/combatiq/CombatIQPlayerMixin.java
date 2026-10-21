@@ -11,6 +11,10 @@ public abstract class CombatIQPlayerMixin {
     private void combatiq$beforeSprint(boolean value, CallbackInfo ci) { CombatIQNative.onPlayerPoint(this, 1); }
     @Inject(method="d(Z)V", at=@At("RETURN"), require=0)
     private void combatiq$afterSprint(boolean value, CallbackInfo ci) { CombatIQNative.onPlayerPoint(this, 2); }
+    @Inject(method="m()V", at=@At("HEAD"), require=0)
+    private void combatiq$beforeLiving(CallbackInfo ci) { CombatIQNative.onPlayerPoint(this, 4); }
+    @Inject(method="bw()V", at=@At("HEAD"), require=0)
+    private void combatiq$swing(CallbackInfo ci) { CombatIQNative.onSwing(this); }
     @Inject(method="m()V", at=@At("RETURN"), require=0)
     private void combatiq$afterLiving(CallbackInfo ci) { CombatIQNative.onPlayerPoint(this, 3); }
 }

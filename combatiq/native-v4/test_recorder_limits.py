@@ -102,16 +102,96 @@ class RecorderLimits(unittest.TestCase):
                 z.writestr('mixins.soar.json','{"mixins":[]}')
             with zipfile.ZipFile(patched,'w') as z:
                 z.writestr('unchanged.txt','preserve')
-                z.writestr('mixins.soar.json',json.dumps({'mixins':['combatiq.'+n for n in ADDED_MIXINS]}))
+                z.writestr('mixins.soar.json',json.dumps({'mixins':[]}))
                 for name,raw in expected.items(): z.writestr(name,raw)
-            result=verify(baseline,patched,classes)
+            result=verify(baseline,patched,classes,required_mixins=[])
             self.assertEqual(result['java_class_major'],52)
             with zipfile.ZipFile(patched,'w') as z:
                 z.writestr('unchanged.txt','preserve')
-                z.writestr('mixins.soar.json',json.dumps({'mixins':['combatiq.'+n for n in ADDED_MIXINS]}))
+                z.writestr('mixins.soar.json',json.dumps({'mixins':[]}))
                 for name,raw in expected.items():
                     if not name.endswith('Snapshot.class'):z.writestr(name,raw)
-            with self.assertRaises(AssertionError):verify(baseline,patched,classes)
+            with self.assertRaises(ValueError):verify(baseline,patched,classes,required_mixins=[])
+
+    def test_connection_identity_motion_mouse_and_export_integration(self):
+        from combat_analyzer import analyze
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            subprocess.run([self.java,'-Xverify:all','-Dvelvet.combatiq.enabled=true',
+                '-Dvelvet.combatiq.exportDir='+d,'-cp',str(self.classes),'IntegrationV3'],
+                check=True,capture_output=True,text=True,timeout=15)
+            files=list(Path(d).glob('*.csv'));self.assertEqual(len(files),1)
+            self.assertFalse(list(Path(d).glob('*.partial')))
+            t=read_trace(files[0]);self.assertEqual(t['schema'],3);self.assertTrue(t['complete'])
+            events=t['events']
+            network=[e for e in events if e['kind']==26]
+            self.assertEqual(len(network),2)
+            self.assertNotEqual(network[0]['connection'],network[1]['connection'])
+            packet=[e for e in events if e['kind'] in (5,23,24,26) and e['epoch']==network[0]['epoch']]
+            self.assertEqual(len({e['packetId'] for e in packet}),1)
+            self.assertTrue(all(e['packetId']>0 for e in packet))
+            self.assertTrue(any(e['kind']==17 and e['y']==.4 for e in events))
+            self.assertTrue(any(e['kind']==18 and e['x']==1 for e in events))
+            self.assertTrue(any(e['kind']==21 and e['x']==3 for e in events))
+            self.assertEqual([e['data'] for e in events if e['kind']==19],[1,3])
+            self.assertTrue(any(e['kind']==22 and e['phase']==5 for e in events))
+            self.assertTrue(any(e['kind']==22 and e['phase']==6 for e in events))
+            report=analyze(files[0]);self.assertLess(report['normalized_event_count'],len(events))
+            self.assertEqual(len(report['analyzers']['hit_select']['observations']),1)
+            exports=list(Path(d).glob('combatiq-report-*.json'));self.assertEqual(len(exports),1)
+            self.assertEqual(json.loads(exports[0].read_text())['server_outcome'],'UNKNOWN')
+
+    def test_rotation_is_replayable_with_checksums(self):
+        from combat_analyzer import read_session,analyze
+        with tempfile.TemporaryDirectory() as d:
+            subprocess.run([self.java,'-Dvelvet.combatiq.enabled=true','-Dvelvet.combatiq.rotate=true',
+                '-Dvelvet.combatiq.maxBytes=65536','-Dvelvet.combatiq.exportDir='+d,
+                '-cp',str(self.classes),'StressV4','concurrent','1500'],check=True,capture_output=True,text=True,timeout=15)
+            files=list(Path(d).glob('*.csv'));self.assertGreater(len(files),1)
+            self.assertTrue(all(p.stat().st_size<=65536 for p in files))
+            t=read_session(list(reversed(files)));self.assertTrue(t['complete']);self.assertEqual(t['loss'],0)
+            self.assertEqual(sum(e['kind']==5 for e in t['events']),3000)
+            with self.assertRaises(ValueError):read_session(files[1:])
+            p=files[0];p.write_bytes(p.read_bytes().replace(b',5,13,',b',5,14,',1))
+            with self.assertRaises(ValueError):read_trace(p)
+
+    def test_duration_cap_finishes_without_gameplay_calls(self):
+        t,raw,status=self.run_capture('duration',100,properties=['-Dvelvet.combatiq.durationSeconds=1'])
+        self.assertTrue(t['capped']);self.assertTrue(raw.endswith(b'# END\n'))
+
+    def test_real_mid_write_failure_preserves_partial_output(self):
+        if os.name!='posix':self.skipTest('POSIX file quota simulation; Windows live storage validation separate')
+        import resource,signal
+        def quota():
+            signal.signal(signal.SIGXFSZ,signal.SIG_IGN)
+            resource.setrlimit(resource.RLIMIT_FSIZE,(4096,4096))
+        with tempfile.TemporaryDirectory() as d:
+            p=subprocess.run([self.java,'-XX:-UsePerfData','-Dvelvet.combatiq.enabled=true',
+                '-Dvelvet.combatiq.exportDir='+d,'-cp',str(self.classes),'StressV4','concurrent','1000'],
+                preexec_fn=quota,check=True,capture_output=True,text=True,timeout=15)
+            self.assertIn('recorder stopped:',p.stdout)
+            self.assertFalse(list(Path(d).glob('*.csv')))
+            partial=list(Path(d).glob('*.partial'));self.assertEqual(len(partial),1)
+            self.assertFalse(read_trace(partial[0])['complete'])
+
+    def test_abrupt_jvm_exit_leaves_identifiable_partial_file(self):
+        import time
+        with tempfile.TemporaryDirectory() as d:
+            p=subprocess.Popen([self.java,'-Dvelvet.combatiq.enabled=true',
+                '-Dvelvet.combatiq.exportDir='+d,'-cp',str(self.classes),'StressV4','pause','100'],
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            try:
+                deadline=time.monotonic()+5
+                while time.monotonic()<deadline:
+                    partial=list(Path(d).glob('*.partial'))
+                    if partial and partial[0].stat().st_size>0:break
+                    time.sleep(.01)
+                p.kill();p.communicate(timeout=5)
+                partial=list(Path(d).glob('*.partial'));self.assertEqual(len(partial),1)
+                self.assertFalse(read_trace(partial[0])['complete'])
+                self.assertFalse(list(Path(d).glob('*.csv')))
+            finally:
+                if p.poll() is None:p.kill();p.communicate(timeout=5)
 
     def test_all_bridge_siblings_are_java8(self):
         siblings=list((self.classes/'me/eldodebug/soar/combatiq').glob('*.class'))

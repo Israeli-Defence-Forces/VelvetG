@@ -29,7 +29,7 @@ def analyze(trace, intervals, transitions):
         tick_gaps = [b['ns']-a['ns'] for a,b in zip(ticks,ticks[1:])]
         sufficient = trace['complete'] and interval['evidence']=='DIRECTLY_OBSERVED' and end is not None
         if not sufficient: flags.append('INSUFFICIENT_EVIDENCE')
-        candidate = sufficient and 0 < end-start <= 250_000_000 and bool(adjacent)
+        candidate = sufficient and 0 < end-start <= 250_000_000 and bool(adjacent) and any(context_scoped(trace,a) for a in adjacent)
         out.append(dict(release_ns=start, repress_ns=end, epoch=interval['epoch'], thread=interval['thread'],
                         quality='INFERRED' if candidate else 'UNKNOWN', candidate=candidate,
                         reasons=flags+interval['reasons'], duration_ms=interval['duration_ms'],

@@ -6,6 +6,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets="ave", remap=false)
 public abstract class CombatIQMinecraftMixin {
+    @Inject(method="s()V",at=@At(value="INVOKE",target="Lorg/lwjgl/input/Mouse;getEventButton()I",ordinal=0,shift=At.Shift.AFTER),require=0)
+    private void combatiq$mouse(CallbackInfo ci) { CombatIQNative.onMouseDispatch(); }
     @Inject(method="aw()V", at=@At("HEAD"), require=0)
     private void combatiq$attack(CallbackInfo ci) { CombatIQNative.onAttackIntent(); }
     @Inject(method="ax()V", at=@At("HEAD"), require=0)

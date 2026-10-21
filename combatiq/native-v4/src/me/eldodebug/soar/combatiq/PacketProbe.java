@@ -62,6 +62,9 @@ public final class PacketProbe {
     }
     /** Data codes 11..24 are stable in native schema 2; stage kind is 5, 6 or 15. */
     public static void capture(Object packet, int stage) {
+        capture(packet,stage,0);
+    }
+    public static void capture(Object packet,int stage,long owner) {
         if (packet == null) return;
         Layout l = LAYOUTS.get(packet.getClass());
         if (l.family == 0) { CombatIQNative.recordFilteredPacket(); return; }
@@ -80,7 +83,10 @@ public final class PacketProbe {
             double c = l.z == null ? Double.NaN : l.z.getDouble(packet);
             if (l.family == 6) a = l.action.getByte(packet);
             if (l.family == 4) a = l.action.getInt(packet);
-            CombatIQNative.emit(stage, code, Float.NaN, l.name, entity, 0, a, b, c);
+            if ((code==20||code==21) && CombatIQNative.detailLevel()<2 && !CombatIQNative.relevantTarget(entity)) {
+                CombatIQNative.recordFilteredPacket();return;
+            }
+            CombatIQNative.emitPacket(stage,code,l.name,entity,0,a,b,c,packet,owner);
         } catch (Throwable failure) {
             CombatIQNative.reportPacketFailure(6);
         }

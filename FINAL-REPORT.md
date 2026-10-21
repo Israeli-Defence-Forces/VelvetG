@@ -1,36 +1,33 @@
-# CombatIQ engineering checkpoint
+# CombatIQ RC1 engineering validation
 
-Implemented and published seven continuation checkpoints on `combatiq/phase4-hardening`, starting from PR #2's verified head `d44f393899c4ea476ff8b0d25f64d5393a0c8a3a`. [Draft PR #3](https://github.com/Israeli-Defence-Forces/VelvetG/pull/3) remains experimental and unmerged. Code validation covers commit `3cf47c3eb6c0388390d91166b9c2f1c77a1e5eea`; the later delivery commit adds reports and the source archive.
+The native client builds from the exact Sampling Fix v3 baseline, including the native HUD module. This is an experimental release candidate. Minecraft startup, full baseline Mixin coexistence, actual NanoVG/config persistence, Windows execution and gameplay performance remain UNVERIFIED. No production merge is authorized.
 
-Local results: **72 tests run, 71 passed, one historical recording test skipped**. Also passed 60 standalone kernel assertions and 3 protocol tests. [Hosted CI](https://github.com/Israeli-Defence-Forces/VelvetG/actions/runs/39559227348) passed Java **8, 17 and 21** on that code commit. All 15 native source/tool/module classes compiled to Java 8 class major 52. Official Minecraft 1.8.9 SHA-pinned descriptors and packet layouts pass structural verification. Actual Minecraft and Mixin application have not been tested.
+| System | Implemented | Tests | Real Minecraft validation | Release status |
+|---|---|---|---|---|
+| Recorder | Bounded MPSC, restart, duration/row/size limits, segmented CSV/checksums, partial-file failure detection | Concurrency, overflow, disk quota, abrupt kill, reassembly, tamper, lifecycle | Unverified | RC1 binary |
+| Input sampling | Active binding, gameplay context, mouse proxy, forward/strafe | Remap, focus, local/client-thread and foreign first-caller harnesses | Unverified | RC1 binary |
+| Sprint reconstruction | Actual setter pairs, sparse state, sprint action attempts | Transitions, repeats and abstention | Unverified | RC1 binary + analyzer |
+| Packet correlation | Temporary object tokens, observed network-manager identity, API/dispatch/channel-invocation stages | Stale manager rejection, normalization, six real headless Mixin transformations | Unverified | Socket writes/server receipt unavailable |
+| W-tap | Raw/normalized releases, sampling and retrospective candidates | Positive, contradictory, missing/unknown-owner cases | Unverified | No optimal-delay claim |
+| Block-hit | Mouse overlap, swing, block observations, use/attack sequence, movement context | Ordering, missing packet and abstention cases | Unverified | Acceptance/immunity unknown |
+| Hit-select | Local feedback, velocity/ground/observed target context, ambiguous attribution | Packet deduplication, dense-window abstention and identity boundaries | Unverified | Attacker/server outcome unknown |
+| Combo | Target-specific attempt chains, gaps/corrections/releases | Target, gap, correction and boundary cases | Unverified | Accepted-hit chain unknown |
+| Native GUI/HUD | Native HUDMod registration, compact/expanded snapshots, cached measurements, theme/font/position/scale inheritance | Actual module compiled against exact v3 API; contract harness verifies settings, draw, fault isolation and no render lock | Unverified | NanoVG and editor behavior pending |
+| Settings | 13 native settings; recording defaults off; export action, path, limits, rotation and analyzer controls | ABI and contract behavior | Unverified | Native config serialization pending |
+| Performance | Six fixed-workload JVM configurations; producer allocation, CPU, percentiles, GC, loss and offline replay | 18 measured synthetic runs; raw evidence included | Unverified | No FPS/frame-time claim |
+| Calibration | Session-held-out authoritative-trial framework and rejection of leakage/invalid labels | Synthetic labeled-session tests and protocol self-tests | Unverified | No real recommendation/clock alignment |
+| Installer/rollback | Exact new-JAR pin, separate profile, original preserved, durable journal/recovery, rollback/uninstall | 11 transaction tests plus real built-JAR install/rollback/tamper smoke | Unverified | Python 3.9+; Windows OS pending |
+| Final JAR | Exact v3 patch, native module included, Java 8 bytecode, dependency closure and unrelated-entry preservation | Structural checks, ZIP integrity, repeated build digest and artifact verification | Unverified | Experimental RC1; runtime acceptance pending |
 
-| Subsystem | Implemented? | Compiles? | Tests passed? | In Minecraft? | Ready for user testing? | Remaining blockers |
-|---|---|---|---|---|---|---|
-| Client ownership / sprint probes | Yes, guarded local observations | Java 8 bytecode | Mock concurrency/sprint regressions | No | Source tests | Exact v3 bridge and live injection |
-| Input / packet telemetry | Partial; remapping and allowlisted actions | Java 8 bytecode | Remapping, action layouts, thread guards | No | Source tests | Raw mouse/press overlap, connection identity, actual transport |
-| Recorder | Bounded ring, restart, caps, filtered/lost counts, snapshots | Java 8 bytecode | Overflow, multi-producer accounting, caps, disk errors, restart | No | Mock tests | Gameplay overhead, real storage failures, live lifecycle |
-| W-tap analyzer | Deterministic event evidence / candidates | Python | Multi-event fixtures | N/A | Offline yes | Requested real CSV; live sprint coverage |
-| Block-hit analyzer | Attack/use order and sparse block changes | Python | Multi-event order/abstention tests | N/A | Offline yes | Raw overlap, swing, slowdown and immunity evidence |
-| Hit-select analyzer | Local feedback and ambiguous counterattempt matching | Python | Local/nonlocal and thread ambiguity tests | N/A | Offline yes | Attacker identity, local velocity response, authoritative outcomes |
-| Combo analyzer | Configurable target-specific attempt chains | Python | Target/gap/correction tests | N/A | Offline yes | Accepted hits and target separation |
-| Native module / HUD | Partial native HUDMod + registration/settings source | Alternate r8 API, Java 8 | Core snapshot/lifecycle tests; no native GUI test | No | Not yet | Exact v3 registration/config, preview/drag/scale/theme, full diagnostics view |
-| Calibration / experiments | Offline server-evidence model and held-out engine | Python | Synthetic labeled sessions / leakage checks | No server run | Offline fixtures | Private server instrumentation and authoritative labels |
-| Performance | Repeatable callback and replay benchmarks | Java 8 / Python | Actual synthetic runs recorded | No | Synthetic only | Real FPS, allocations, CPU/GPU/frame pacing A/B |
-| Build / installer | Pinned patch build, sibling checks, generated installer hash | Native source compiles; full JAR not built | Archive preservation and transaction mocks | No | Source tests | Exact v3 JAR and actual Windows installation |
-| Experimental release | Source package and handoff delivered | Source validated | CI passes | No | Offline/source only | No new installable client JAR; full VI–IX acceptance incomplete |
+Current source regression suite: 101 discovered, 100 passed, 1 skipped (historical CSV unavailable). Standalone kernel: 60 assertions. Protocol: three tests. The final package carries actual logs and benchmark JSON; earlier reports in `reports/` are historical checkpoint evidence, not current certification. Current CI status must be read from the final branch run rather than inferred from previous passing CI.
 
-The highest-risk confirmed defect was context mutation before local-player/client-thread validation. The fix rejects foreign callbacks before observation. Diagnostic injections now tolerate missing targets, active keyboard bindings replace hardcoded W, and resource caps no longer silently overshoot their row budget. Each analyzer preserves unavailable evidence rather than reporting accepted-hit percentages.
+Exact required inputs:
+- v3 SHA-256 `7949d73d9be9eb74b662b2844faee2939c0463222c01b4a89378f19ddaa8bbc7` reconstructed from the supplied two parts and verified.
+- Minecraft SHA-256 `14f0d96d1a56fb4f5c3b2233d00699525893fe5ce3dcf181e7de59120595d298`.
+- Official Minecraft Netty SHA-256 `50510e9c9874b539b98ef931fe7eeeb002f6b5b1976ea37669b9493426294561`.
 
-Normal synthetic recording/snapshot runs had zero loss; one deliberately unpaced packet-burst run dropped **9,619 events**, explicitly counted and invalidated by replay. Normal recording p95 callback batch times were 9.67 and 20.72 microseconds, p99 53.07 and 65.37 microseconds. These are mock callback batches, not Minecraft frames or FPS. No gameplay performance or combat improvement is claimed.
+The final client manifest records its code commit, Java-source digest, compiler, exact input/output digests and compiled entry digests. The consolidated ZIP contains the actual client, freshly pinned installer, five Windows command wrappers, runnable analyzer/calibration zipapp, standalone kernel, README and evidence. `CONTENTS.json`, `SHA256SUMS.txt`, `VERIFY.py` and the outer ZIP checksum support verification. Private client binaries and input JARs must stay out of the public repository.
 
-## Actual downloads and evidence
+Known practical limits: file checksum proves integrity, not authoritative outcomes; writer failure retains `.partial`; segment rotation is bounded by the recording row/duration caps. Packet tokens use bounded identity retention and can lose correspondence on eviction; they cannot prove socket writes or delivery. Dense evidence queries truncate and abstain; movement context reports truncation. Reflection, storage and renderer failures are isolated. The headless Mixin harness retains its bootstrap warning and logs; it transforms six new Mixins but does not initialize the whole original client.
 
-- [Source-only ZIP](combatiq/native-v4/reports/VelvetG-CombatIQ-Hardening-SOURCE.zip): 153,621 bytes, 64 source/tooling files, deterministic archive generation verified. This contains source at code commit `3cf47c3`; no baseline JAR or private CSV is included.
-- [ZIP checksum](combatiq/native-v4/reports/SHA256SUMS.txt): SHA-256 `205b0630e5ac918d3e97ba2692d1f2099591fd30a930e22f1c1778fe678ceff0`.
-- [Exact test handoff](combatiq/native-v4/HANDOFF.md), [release notes / compatibility](combatiq/native-v4/RELEASE-NOTES.md), [audit](AUDIT.md), [recoverable progress](PROGRESS.md).
-- [Native test log](combatiq/native-v4/reports/test-results.txt), [kernel/protocol log](combatiq/native-v4/reports/kernel-tests.txt), [CI result metadata](combatiq/native-v4/reports/ci-results.json).
-- [Actual benchmark data](combatiq/native-v4/reports/benchmark-jdk21.json), [native API/descriptor validation](combatiq/native-v4/reports/native-source-validation.json), [synthetic fixture](combatiq/native-v4/fixtures/synthetic-combat.csv).
-
-The attached ZIP transfers both exceed the tool's 32 MiB limit. Neither checkpoint could be inspected, and the exact v3 baseline and requested historical CSV are unavailable. To unblock binary generation and real baseline reproduction, provide the extracted source-only checkpoint, baseline split into parts below 32 MiB (or placed directly in the workspace), and the actual recording. Required v3 SHA-256 is `7949d73d9be9eb74b662b2844faee2939c0463222c01b4a89378f19ddaa8bbc7`.
-
-The available r8 client was used only for explicitly labeled API compilation; it was never substituted as the patch baseline. Historical `upgrade_v4.py` remains pinned to the historical binary. A future successful exact-baseline build generates a separate installer pinned to the new output; no such new binary or installer is being presented as generated today.
+Windows acceptance procedure is in `combatiq/native-v4/HANDOFF.md`. Do not call the package release-validated until that procedure and actual Minecraft acceptance have been executed.

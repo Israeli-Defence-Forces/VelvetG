@@ -76,9 +76,9 @@ class GeneratedInstallerTests(unittest.TestCase):
         source=pinned_installer('a'*64)
         namespace={'__name__':'generated_installer'}
         exec(compile(source,'generated.upgrade.py','exec'),namespace)
-        self.assertEqual(namespace['CURRENT_SHA'],'a'*64)
-        self.assertEqual(namespace['PREVIOUS_SHA'],u.PREVIOUS_SHA)
-        self.assertEqual(namespace['BASE_SHA'],u.BASE_SHA)
+        self.assertEqual(namespace['EXPECTED_JAR_SHA256'],'a'*64)
+        self.assertEqual(namespace['EXPECTED_BASELINE_SHA256'],u.PREVIOUS_SHA)
+        self.assertIn(u.BASE_SHA,namespace['SOURCE_HASHES'])
         with self.assertRaises(ValueError):pinned_installer('not-an-artifact')
 
 if __name__=='__main__':unittest.main()

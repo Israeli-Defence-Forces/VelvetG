@@ -1,51 +1,38 @@
-# Testing handoff
+# CombatIQ RC1 handoff
 
-This is a source checkpoint. There is no newly generated installable Minecraft JAR.
+This package contains an actual experimental native client built from the SHA-pinned Sampling Fix v3 JAR. It is not runtime-certified. Java 8 bytecode; Python 3.9+ is required for installer and analyzer. Use the source/v3 client installation that already launches successfully. Its version JSON must directly declare one `me.eldodebug:GlideClient` library with an explicit artifact path and a recognized original/v3/v4 JAR hash. Inherited-only GlideClient declarations are refused.
 
-Run source tests from the repository root with Python 3 and a JDK on PATH:
+Extract the entire RC1 ZIP into one directory. In Command Prompt there, run:
 
-```sh
-python3 combatiq/build.py
-python3 -m unittest discover -s combatiq/native-v4 -p 'test*.py' -v
-python3 combatiq/native-v4/combat_analyzer.py combatiq/native-v4/fixtures/synthetic-combat.csv
-python3 combatiq/native-v4/benchmark.py --batches 1000 --repeats 2 --out benchmark.json
+```bat
+py -3 VERIFY.py
+INSTALL.cmd --game-dir "%APPDATA%\.minecraft" --source-version "VelvetG-CombatIQ-Experimental" --check
+INSTALL.cmd --game-dir "%APPDATA%\.minecraft" --source-version "VelvetG-CombatIQ-Experimental"
+CHECK.cmd --game-dir "%APPDATA%\.minecraft"
 ```
 
-The fixture is synthetic. To analyze an actual v3/v4 recording, substitute its path. Keep the CSV private. `combat_analyzer.py` supports schemas 1/2; the historical `analyze_native.py` remains the schema-1 diagnostics tool. The optional schema-2 FILTERED footer is separate from loss; absence in old logs means unknown, not zero. A release/attack attempt is never server hit confirmation.
+Replace the game directory and source-version ID with the existing working installation if different. The installer creates `VelvetG-CombatIQ-RC1`, preserving original files. Select that profile in the launcher; the installer does not edit launcher accounts or select a profile. Start using the known working client's Java/runtime configuration.
 
-For native source validation against the exact baseline:
+Enable CombatIQ in the native module list; Recording defaults off. Configure the export folder, seconds, MiB, rotation and diagnostics before starting a recording. Limits apply next recording; analyzer choices apply live. Use Export local report for a bounded asynchronous snapshot report. Analyze a finalized CSV with:
 
-```sh
-python3 combatiq/native-v4/validate_sources.py --client exact-v3.jar --minecraft minecraft-1.8.9.jar --out source-validation.json
+```bat
+py -3 CombatIQ-Analyzer.pyz "C:\recordings\combatiq-native-session-0000.csv" --format text
+py -3 CombatIQ-Analyzer.pyz "C:\recordings\combatiq-native-session-0000.csv" --out report.json
 ```
 
-`--abi-only` explicitly permits a different client API for compilation checks; it cannot certify an installable binary. The included source validation used this mode with an available r8 client.
+For rotated sessions, provide every CSV segment as a separate quoted argument; order is reconstructed. `.partial`, missing segments, event loss and bad checksums invalidate evidence. Legacy schema 1/2 recordings remain supported. `py -3 CombatIQ-Analyzer.pyz calibrate --help` exposes the held-out private-server trial tool; it supplies no universal optimum.
 
-Once the exact v3 baseline is available, build to a NEW output path:
+Recovery/rollback/uninstall commands (close Minecraft first):
 
-```sh
-python3 combatiq/native-v4/build_v4.py --v3 exact-v3.jar --minecraft minecraft-1.8.9.jar --native-module --out CombatIQ-hardening.jar
+```bat
+RECOVER.cmd --game-dir "%APPDATA%\.minecraft"
+ROLLBACK.cmd --game-dir "%APPDATA%\.minecraft" --check
+ROLLBACK.cmd --game-dir "%APPDATA%\.minecraft"
+UNINSTALL.cmd --game-dir "%APPDATA%\.minecraft"
 ```
 
-The build requires the pinned v3 SHA, official Minecraft SHA, Java 8 classes and all compiler-generated dependencies. It preserves unrelated original archive bytes and generates a manifest plus `CombatIQ-hardening.upgrade.py` pinned to the actual new artifact. That generated installer upgrades an exact installed v3 profile and supports `--game-dir`, `--check`, and `--rollback`; inspect its `--help` first and supply `--patched-jar CombatIQ-hardening.jar` explicitly. An existing historical v4 profile must first use its original tested rollback to restore v3. The unchanged `upgrade_v4.py` and old manifest are historical v3-to-v4 tools and will refuse a new source build. Do not change their constants by hand or run a historical installer on the new build.
+Recovery rolls back an interrupted transaction and refuses outside edits. Rollback restores the previous owned RC1 state; first-install rollback removes RC1 and leaves the source profile available. Uninstall removes only receipt-owned RC1 files. Unknown/tampered files are refused.
 
-Live validation, after a build exists: preserve the original profile; use the side-by-side experimental profile; verify --check and rollback before a test recording. Launch with recording disabled, inspect Mixin logs for all optional probe targets, enable CombatIQ/Recording in the native module, remap forward, repeat release/repress, open a GUI, lose focus, change world, test singleplayer and multiplayer, disable/re-enable, and inspect clean CSV endings and lost/filtered counts. Verify native position/scale/settings persistence, theme, preview, crosshair, Dynamic Widget, SnapTap and delay fixes. Collect real frame-time A/B runs separately; synthetic callback nanoseconds do not imply FPS.
+Indispensable runtime acceptance (NOT EXECUTED here): verify actual launch and all original/new Mixins together; original profile still launches; native module appears once; idle/recording off produces no recording; input focus, remapped forward and GUI transitions remain correct; sprint/raw input/packet stage evidence appears on a private test server; stop/restart/reconnect/rotation produce valid sessions; drag/scale/font/theme/editor/config restart persist correctly; export and storage failure remain responsive; shutdown drains or clearly leaves partial evidence; Windows install/check/recovery/rollback/uninstall preserve originals; matched real gameplay A/B measures CPU, allocations, frame-time percentiles and loss. Combat acceptance claims require authoritative private-server labels.
 
-## Controlled private-server calibration
-
-Use only an authorized controlled server. Define the accepted outcome before collection (receipt alone is not damage acceptance). Randomize prespecified interval candidates within independent session units; keep context, target motion and network conditions controlled or explicitly stratified. Assign complete sessions to train or test before viewing results. Keep the held-out sessions untouched during candidate selection. Record measured RTT/jitter separately from any emulator setting; never infer one-way delay as RTT/2.
-
-`calibrate.py` consumes JSONL with exactly these fields:
-
-```
-trial, session, split, context, candidate_ms, release_ms, tick_ms,
-client_event, server_event, server_tick, server_sequence, accepted, authoritative
-```
-
-Identifiers must be anonymous nonempty strings. `split` is train/test, timings are positive finite numbers, ticks/sequences nonnegative integers, outcomes/source flags boolean. External instrumentation must establish event correspondence and authoritative provenance; a boolean in an imported file cannot authenticate it. No client/server clock offset or server tick phase is inferred. Run:
-
-```sh
-python3 combatiq/native-v4/calibrate.py trials.jsonl --baseline-ms 40 --candidates-ms 40 60
-```
-
-Candidate selection uses training session means. Separate held-out session bounds compare the selected candidate to the baseline; overlap or insufficient sessions yields no recommendation. Context summaries and variability remain observational. Multiple exploratory contexts require a separate multiplicity plan. This code never controls input or packet timing.
+See FINAL-REPORT.md and the package's validation folder for scope, raw logs and exact counts. Historical v4 upgrade files are not the RC1 installer.

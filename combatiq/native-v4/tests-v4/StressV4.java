@@ -36,6 +36,8 @@ public class StressV4 {
     a.start();b.start();a.join();b.join();
    }
   }
+  if(args[0].equals("duration"))Thread.sleep(1200);
+  if(args[0].equals("pause"))Thread.sleep(30000);
   Thread.sleep(80);
   System.out.println(CombatIQNative.status());
  }

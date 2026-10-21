@@ -11,12 +11,14 @@ import shutil
 import struct
 import subprocess
 import tempfile
-from build_v4 import V3
+from build_v4 import V3,NETTY_SHA256,NETTY_RELATIVE
 
 ROOT=Path(__file__).resolve().parent
 
 
-def validate(client,minecraft,abi_only=False):
+def validate(client,minecraft,abi_only=False,netty=None):
+    netty=netty or minecraft.parent/'deps'/NETTY_RELATIVE
+    if not netty.is_file() or hashlib.sha256(netty.read_bytes()).hexdigest()!=NETTY_SHA256:raise ValueError('Exact Minecraft Netty library required')
     client_hash=hashlib.sha256(client.read_bytes()).hexdigest()
     if client_hash!=V3 and not abi_only:
         raise ValueError('Exact v3 baseline required; --abi-only permits an explicit alternate API compile check')
@@ -26,7 +28,7 @@ def validate(client,minecraft,abi_only=False):
     flags=['-source','8','-target','8'] if version.startswith('javac 1.8') else ['--release','8']
     with tempfile.TemporaryDirectory() as d:
         sources=list((ROOT/'src').rglob('*.java'))+list((ROOT/'native-module').rglob('*.java'))
-        subprocess.run([javac,'-proc:none',*flags,'-cp',str(client),'-d',d,*map(str,sources)],check=True)
+        subprocess.run([javac,'-proc:none',*flags,'-cp',str(client)+os.pathsep+str(netty),'-d',d,*map(str,sources)],check=True)
         target=subprocess.check_output([java,'-Xverify:all','-cp',d+os.pathsep+str(client),
                                        'tools.VerifyBindings',str(minecraft)],text=True)
         classes=list(Path(d).rglob('*.class'))
@@ -41,8 +43,9 @@ def validate(client,minecraft,abi_only=False):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--client',type=Path,required=True);p.add_argument('--minecraft',type=Path,required=True)
+    p.add_argument('--netty',type=Path)
     p.add_argument('--abi-only',action='store_true');p.add_argument('--out',type=Path,required=True)
-    a=p.parse_args();r=validate(a.client,a.minecraft,a.abi_only)
+    a=p.parse_args();r=validate(a.client,a.minecraft,a.abi_only,a.netty)
     with a.out.open('x') as f:json.dump(r,f,indent=2)
     print(a.out)
 

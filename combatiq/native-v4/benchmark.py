@@ -4,7 +4,10 @@ import argparse
 import json
 import os
 from pathlib import Path
-import resource
+try:
+    import resource
+except ImportError:
+    resource=None
 import shutil
 import subprocess
 import tempfile
@@ -26,16 +29,16 @@ def benchmark(batches=5000,repeats=3):
         sources=list((ROOT/'tests-v4').glob('*.java'))+[ROOT/'tests/org/lwjgl/input/Keyboard.java']
         sources+=list((ROOT/'src/me/eldodebug/soar/combatiq').glob('*.java'))
         subprocess.run([javac,*flags,'-d',str(classes),*map(str,sources)],check=True,capture_output=True)
-        for mode in ('disabled','recording','snapshot','packet-burst'):
+        for mode in ('disabled','enabled-idle','recording','compact-hud','expanded-diagnostics','deep-diagnostics'):
             for repeat in range(repeats):
                 export=d/(mode+str(repeat));export.mkdir()
-                before=resource.getrusage(resource.RUSAGE_CHILDREN);start=time.perf_counter()
-                p=subprocess.run([java,'-Dvelvet.combatiq.enabled='+str(mode!='disabled').lower(),
+                before=resource.getrusage(resource.RUSAGE_CHILDREN) if resource else None;start=time.perf_counter()
+                p=subprocess.run([java,'-Dvelvet.combatiq.enabled='+str(mode not in ('disabled','enabled-idle')).lower(),
                     '-Dvelvet.combatiq.exportDir='+str(export),'-cp',str(classes),'BenchV4',mode,str(batches)],
                     check=True,capture_output=True,text=True,timeout=30)
-                elapsed=time.perf_counter()-start;after=resource.getrusage(resource.RUSAGE_CHILDREN)
+                elapsed=time.perf_counter()-start;after=resource.getrusage(resource.RUSAGE_CHILDREN) if resource else None
                 run=dict(mode=mode,repeat=repeat,wall_seconds_including_JVM=elapsed,
-                         child_cpu_seconds=after.ru_utime+after.ru_stime-before.ru_utime-before.ru_stime,
+                         child_cpu_seconds=after.ru_utime+after.ru_stime-before.ru_utime-before.ru_stime if resource else None,
                          timing=json.loads(p.stdout),serialized_rows=0,event_loss=0,bytes=0)
                 files=list(export.glob('*.csv'))
                 if files:
@@ -45,9 +48,9 @@ def benchmark(batches=5000,repeats=3):
                 runs.append(run)
     return dict(kind='SYNTHETIC_CALLBACK_BATCHES_NOT_GAMEPLAY',compiler=version,runs=runs,
                 limitations=['One JVM per run; warmup is limited; timing includes nanoTime measurement overhead',
-                             'Snapshot mode reads immutable data but does not render NanoVG',
-                             'No frame times, FPS, GPU cost or real Minecraft allocation rate measured',
-                             'Packet burst measures allowed packet observations, not full diagnostic payload mode',
+                             'HUD modes consume immutable snapshots; no NanoVG rendering or native layout timing',
+                             'No frame times, FPS, GPU cost or gameplay allocation rate measured; allocation is producer thread only',
+                             'Same offered callbacks in all modes; deep mode additionally retains unrelated numeric entity teleports',
                              'CPU includes startup/shutdown; loss and serialized rows include warmup'])
 
 
