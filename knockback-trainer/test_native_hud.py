@@ -53,12 +53,13 @@ class NativeHud(unittest.TestCase):
   javac=shutil.which('javac');java=shutil.which('java')
   if not javac or not java:self.skipTest('JDK required')
   with tempfile.TemporaryDirectory() as d:
-   d=Path(d);sources=[]
+   d=Path(d);(d/'classes').mkdir();sources=[]
    for name,text in STUBS.items():
     p=d/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text);sources.append(p)
    sources+=list((ROOT/'src').rglob('*.java'))+list((ROOT/'native').rglob('*.java'))
    sources+=[ROOT/'tests/MockMinecraft.java',*list((ROOT/'tests/org').rglob('*.java'))]
    v=subprocess.check_output([javac,'-version'],stderr=subprocess.STDOUT,text=True);flags=['-source','8','-target','8'] if v.startswith('javac 1.8') else ['--release','8']
-   subprocess.run([javac,*flags,'-d',str(d/'classes'),*map(str,sources)],check=True,capture_output=True,text=True)
+   compile_result=subprocess.run([javac,*flags,'-d',str(d/'classes'),*map(str,sources)],capture_output=True,text=True)
+   self.assertEqual(compile_result.returncode,0,compile_result.stdout+compile_result.stderr)
    p=subprocess.run([java,'-Xverify:all','-cp',str(d/'classes'),'TrainerGuiHarness'],check=True,capture_output=True,text=True,timeout=20)
    print(p.stdout.strip());self.assertIn('PASS:',p.stdout)
